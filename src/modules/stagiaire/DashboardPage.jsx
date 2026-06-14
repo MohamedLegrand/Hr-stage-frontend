@@ -29,9 +29,9 @@ export default function DashboardPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showPaiement, setShowPaiement] = useState(false);
   const [showPreinscription, setShowPreinscription] = useState(false);
-  const [uploadType, setUploadType] = useState("");
-  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadFiles, setUploadFiles] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [paiementForm, setPaiementForm] = useState({ telephone: "", operateur: "MTN" });
   const [preinscriptionForm, setPreinscriptionForm] = useState({ telephone: "", operateur: "MTN" });
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -50,16 +50,25 @@ export default function DashboardPage() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!uploadType || !uploadFile) return;
+    const filesToUpload = DOC_TYPES
+      .filter((doc) => uploadFiles[doc.value])
+      .map((doc) => ({ type: doc.value, file: uploadFiles[doc.value] }));
+
+    if (filesToUpload.length === 0) {
+      setUploadError("Sélectionnez au moins un document à uploader.");
+      return;
+    }
+
     setUploading(true);
+    setUploadError("");
+
     try {
-      await documentsService.uploadDocument(uploadType, uploadFile);
+      await documentsService.uploadDocuments(filesToUpload);
       dispatch(fetchDocuments());
       setShowUpload(false);
-      setUploadType("");
-      setUploadFile(null);
+      setUploadFiles({});
     } catch (err) {
-      alert(err.response?.data?.detail || "Erreur upload");
+      setUploadError(err.response?.data?.detail || err.message || "Erreur upload");
     } finally {
       setUploading(false);
     }
@@ -129,7 +138,7 @@ export default function DashboardPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap');`}</style>
 
       {/* SIDEBAR */}
-      <div style={{
+      <div className="app-sidebar dashboard-sidebar" style={{
         position: "fixed", left: 0, top: 0, bottom: 0, width: "240px",
         background: "linear-gradient(180deg, #4c1d95 0%, #7c3aed 100%)",
         display: "flex", flexDirection: "column", padding: "1.5rem 0", zIndex: 10
@@ -137,7 +146,7 @@ export default function DashboardPage() {
         <div style={{ padding: "0 1.5rem", marginBottom: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <img src="/images/logo.jpeg" alt="Logo" style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover" }} />
-            <span style={{ fontWeight: "700", fontSize: "15px", color: "#fff" }}>HR Skills Stage</span>
+            <span style={{ fontWeight: "700", fontSize: "15px", color: "#fff" }}>HR Skills SARL</span>
           </div>
         </div>
 
@@ -183,7 +192,7 @@ export default function DashboardPage() {
       </div>
 
       {/* CONTENU */}
-      <div style={{ marginLeft: "240px", padding: "2rem" }}>
+      <div className="app-main dashboard-main" style={{ marginLeft: "240px", padding: "2rem" }}>
 
         {/* HEADER */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
@@ -221,7 +230,7 @@ export default function DashboardPage() {
         {activeMenu === "dashboard" && (
           <>
             {/* STATS */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+            <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
               {[
                 { icon: <FiFileText size={22} />, label: "Documents soumis", value: `${documents.length} / 4`, color: "#7c3aed", bg: "#f5f3ff" },
                 { icon: <FiCheckCircle size={22} />, label: "Documents validés", value: `${docsValides} / 4`, color: "#10b981", bg: "#f0fdf4" },
@@ -257,7 +266,7 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "1.5rem" }}>
+            <div className="summary-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "1.5rem" }}>
               {/* DOCUMENTS */}
               <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #ede9fe", padding: "1.5rem" }}>
                 <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", fontWeight: "600", color: "#1e293b", marginBottom: "1.25rem" }}>État des documents</h3>
@@ -377,7 +386,7 @@ export default function DashboardPage() {
 
         {/* PAIEMENT PAGE — deux cartes côte à côte */}
         {activeMenu === "paiement" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", maxWidth: "900px" }}>
+          <div className="payment-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", maxWidth: "900px" }}>
 
             {/* CARTE PRE-INSCRIPTION */}
             <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #ede9fe", padding: "2rem" }}>
@@ -454,32 +463,59 @@ export default function DashboardPage() {
 
       {/* MODAL UPLOAD */}
       {showUpload && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "440px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-              <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "18px", fontWeight: "600", color: "#1e293b" }}>Uploader un document</h3>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0.75rem", zIndex: 100 }}>
+          <div style={{ background: "#fff", borderRadius: "18px", padding: "1rem", width: "clamp(280px, 84vw, 420px)", maxHeight: "calc(100vh - 2rem)", overflowY: "auto", boxShadow: "0 18px 48px rgba(15, 23, 42, 0.16)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div>
+                <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "18px", fontWeight: "700", color: "#111827", marginBottom: "0.15rem" }}>Uploader vos documents</h3>
+                <p style={{ fontSize: "12px", color: "#6b7280", lineHeight: "1.4", margin: 0 }}>
+                  Sélectionnez les documents requis. Formats acceptés : PDF, JPG, JPEG, PNG.
+                </p>
+              </div>
               <button onClick={() => setShowUpload(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><FiX size={20} /></button>
             </div>
-            <form onSubmit={handleUpload} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Type de document</label>
-                <select value={uploadType} onChange={e => setUploadType(e.target.value)} required style={inputStyle}>
-                  <option value="">Choisir le type</option>
-                  {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
+            <form onSubmit={handleUpload} style={{ display: "grid", gap: "0.75rem" }}>
+              {DOC_TYPES.map((doc) => (
+                <label key={doc.value} style={{ display: "block", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: "14px", padding: "0.85rem", cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.55rem", flexWrap: "wrap", gap: "0.4rem" }}>
+                    <span style={{ fontSize: "13px", fontWeight: "600", color: "#111827" }}>{doc.label}</span>
+                    <span style={{ fontSize: "11px", color: "#7c3aed", fontWeight: "600" }}>Obligatoire</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={e => setUploadFiles({ ...uploadFiles, [doc.value]: e.target.files[0] })}
+                    style={{ ...inputStyle, padding: "8px 10px", width: "100%", cursor: "pointer", fontSize: "13px" }}
+                  />
+                  {uploadFiles[doc.value] && (
+                    <div style={{ marginTop: "0.6rem", fontSize: "12px", color: "#374151" }}>
+                      {uploadFiles[doc.value].name}
+                    </div>
+                  )}
+                </label>
+              ))}
+              {uploadError && (
+                <div style={{ color: "#dc2626", fontSize: "13px", fontWeight: "600", padding: "0.65rem 0.85rem", borderRadius: "12px", background: "#fef2f2", border: "1px solid #fecaca" }}>
+                  {uploadError}
+                </div>
+              )}
+              <div style={{ display: "grid", gap: "0.65rem" }}>
+                <button type="submit" disabled={uploading} style={{
+                  padding: "12px", borderRadius: "14px",
+                  background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
+                  color: "#fff", border: "none", fontSize: "14px", fontWeight: "700",
+                  cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.7 : 1,
+                  boxShadow: "0 14px 24px rgba(124, 58, 237, 0.16)"
+                }}>
+                  {uploading ? "Envoi..." : "Téléverser"}
+                </button>
+                <button type="button" onClick={() => { setShowUpload(false); setUploadFiles({}); setUploadError(""); }} style={{
+                  padding: "12px", borderRadius: "14px", background: "#f3f4f6",
+                  color: "#374151", border: "1px solid #e5e7eb", fontSize: "14px", fontWeight: "700", cursor: "pointer"
+                }}>
+                  Fermer
+                </button>
               </div>
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Fichier (PDF, JPG, PNG — max 5 Mo)</label>
-                <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setUploadFile(e.target.files[0])} required style={{ ...inputStyle, padding: "8px 14px" }} />
-              </div>
-              <button type="submit" disabled={uploading} style={{
-                padding: "12px", borderRadius: "8px",
-                background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-                color: "#fff", border: "none", fontSize: "14px", fontWeight: "600",
-                cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.7 : 1
-              }}>
-                {uploading ? "Envoi en cours..." : "Envoyer"}
-              </button>
             </form>
           </div>
         </div>

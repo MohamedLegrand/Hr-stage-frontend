@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function Header() {
   return (
-    <header style={{
+    <header className="site-header" style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
       background: "rgba(255, 255, 255, 0.95)",
       backdropFilter: "blur(12px)",
@@ -21,17 +21,16 @@ export default function Header() {
           style={{ width: "42px", height: "42px", borderRadius: "50%", objectFit: "cover" }}
         />
         <span style={{ fontWeight: "700", fontSize: "18px", color: "#4c1d95" }}>
-          HR Skills <span style={{ color: "#7c3aed" }}>Stage</span>
+          HR Skills <span style={{ color: "#7c3aed" }}>SARL</span>
         </span>
       </div>
 
       {/* NAV */}
-      <nav style={{ display: "flex", gap: "2rem", alignItems: "center" }}>
+      <nav className="site-nav" style={{ display: "flex", gap: "2rem", alignItems: "center" }}>
         {[
           { label: "Accueil", href: "#hero" },
-          { label: "Fonctionnalités", href: "#fonctionnalites" },
           { label: "Comment ça marche", href: "#etapes" },
-          { label: "Contact", href: "#contact" },
+          { label: "Tarifs", href: "#tarifs" },
         ].map((item) => (
           <a key={item.href} href={item.href} style={{
             color: "#6b7280", textDecoration: "none",
@@ -44,7 +43,7 @@ export default function Header() {
       </nav>
 
       {/* BOUTONS */}
-      <div style={{ display: "flex", gap: "12px" }}>
+      <div className="site-actions" style={{ display: "flex", gap: "12px" }}>
         <Link to="/login" style={{
           padding: "8px 20px", borderRadius: "8px",
           border: "1px solid #7c3aed", color: "#7c3aed",

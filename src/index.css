@@ -35,4 +35,97 @@
   .badge-info {
     @apply bg-blue-900 text-blue-300 text-xs font-medium px-2.5 py-1 rounded-full;
   }
+}.site-header {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.site-header .site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.site-header .site-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.app-sidebar {
+  min-height: 100vh;
+}
+
+.app-main {
+  transition: margin 0.25s ease, padding 0.25s ease;
+}
+
+.stats-grid,
+.summary-grid,
+.payment-grid,
+.dossier-grid {
+  transition: all 0.25s ease;
+}
+
+.footer-contact {
+  padding: 5rem 2rem;
+}
+
+.site-footer {
+  transition: all 0.25s ease;
+}
+
+@media (max-width: 1024px) {
+  .site-header {
+    padding: 0.75rem 1rem;
+    height: auto !important;
+    justify-content: center;
+  }
+  .site-header .site-nav,
+  .site-header .site-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  .app-sidebar {
+    position: relative !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 1rem !important;
+  }
+  .app-main {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+  }
+  .stats-grid,
+  .summary-grid,
+  .payment-grid,
+  .dossier-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .footer-contact {
+    padding: 3rem 1rem;
+  }
+  .site-footer {
+    padding: 1.25rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .site-header {
+    padding: 0.75rem 0.75rem;
+  }
+  .site-header .site-nav,
+  .site-header .site-actions {
+    gap: 0.5rem;
+  }
+  .footer-contact {
+    padding: 2rem 1rem;
+  }
+  .site-footer {
+    padding: 1rem 1rem;
+  }
 }

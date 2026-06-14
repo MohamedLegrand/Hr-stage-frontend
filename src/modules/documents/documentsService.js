@@ -14,12 +14,17 @@ const documentsService = {
     });
     return response.data;
   },
+  uploadDocuments: async (documents) => {
+    if (!Array.isArray(documents) || documents.length === 0) {
+      throw new Error("Aucun document à uploader");
+    }
+    const uploads = documents.map(({ type, file }) => documentsService.uploadDocument(type, file));
+    return Promise.all(uploads);
+  },
   deleteDocument: async (id) => {
     const response = await axiosInstance.delete(`/documents/${id}`);
     return response.data;
-  }
-
-  ,
+  },
   getDocumentsByStagiaire: async (userId) => {
     const response = await axiosInstance.get(`/documents/stagiaire/${userId}`);
     return response.data;

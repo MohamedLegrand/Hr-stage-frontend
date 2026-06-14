@@ -46,7 +46,6 @@ export default function LoginPage() {
     <div style={{
       minHeight: "100vh",
       display: "flex",
-      background: "linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)",
       fontFamily: "'Inter', sans-serif"
     }}>
 
@@ -59,7 +58,8 @@ export default function LoginPage() {
       <div style={{
         flex: 1, display: "flex", flexDirection: "column",
         justifyContent: "center", alignItems: "center",
-        padding: "2rem"
+        padding: "2rem",
+        background: "linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)"
       }}>
         <div style={{ width: "100%", maxWidth: "420px" }}>
 
@@ -71,7 +71,7 @@ export default function LoginPage() {
               style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }}
             />
             <span style={{ fontWeight: "700", fontSize: "18px", color: "#4c1d95" }}>
-              HR Skills <span style={{ color: "#7c3aed" }}>Stage</span>
+              HR Skills <span style={{ color: "#7c3aed" }}>SARL</span>
             </span>
           </div>
 
@@ -80,7 +80,7 @@ export default function LoginPage() {
             fontSize: "28px", fontWeight: "700",
             color: "#1e293b", marginBottom: "0.5rem"
           }}>
-            Bon retour 👋
+            Bon retour 
           </h1>
           <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "2rem" }}>
             Connectez-vous pour accéder à votre espace
@@ -192,29 +192,68 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* PANNEAU DROIT */}
+      {/* PANNEAU DROIT AVEC IMAGE DE FOND */}
       <div style={{
         flex: 1, display: "flex", flexDirection: "column",
         justifyContent: "center", alignItems: "center",
-        background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
+        position: "relative",
         padding: "3rem", color: "#fff"
       }}>
-        <div style={{ maxWidth: "380px", textAlign: "center" }}>
+        {/* Image de fond */}
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: "url('/images/auth/login.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat"
+        }} />
+        
+        {/* Overlay sombre pour la lisibilité */}
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "linear-gradient(135deg, rgba(124,58,237,0.85), rgba(124,58,237,0.75))"
+        }} />
+
+        {/* Contenu */}
+        <div style={{ 
+          maxWidth: "380px", 
+          textAlign: "center",
+          position: "relative",
+          zIndex: 2
+        }}>
           <div style={{
             width: "80px", height: "80px", borderRadius: "50%",
             background: "rgba(255,255,255,0.2)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 2rem", fontSize: "36px"
+            margin: "0 auto 2rem", fontSize: "36px",
+            backdropFilter: "blur(5px)"
           }}>📋</div>
+          
           <h2 style={{
             fontFamily: "'Poppins', sans-serif",
-            fontSize: "24px", fontWeight: "700", marginBottom: "1rem"
+            fontSize: "24px", fontWeight: "700", marginBottom: "1rem",
+            textShadow: "2px 2px 4px rgba(0,0,0,0.2)"
           }}>
             Gérez votre dossier de stage
           </h2>
-          <p style={{ opacity: 0.85, lineHeight: "1.7", fontSize: "15px" }}>
+          
+          <p style={{ 
+            opacity: 0.95, 
+            lineHeight: "1.7", 
+            fontSize: "15px",
+            textShadow: "1px 1px 2px rgba(0,0,0,0.1)"
+          }}>
             Soumettez vos documents, effectuez votre paiement et suivez votre dossier en temps réel depuis votre espace personnel.
           </p>
+          
           <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "2.5rem" }}>
             {[
               "✅ Upload de documents sécurisé",
@@ -223,8 +262,10 @@ export default function LoginPage() {
             ].map((item) => (
               <div key={item} style={{
                 padding: "12px 20px", borderRadius: "10px",
-                background: "rgba(255,255,255,0.15)",
-                fontSize: "14px", fontWeight: "500", textAlign: "left"
+                background: "rgba(255,255,255,0.2)",
+                backdropFilter: "blur(10px)",
+                fontSize: "14px", fontWeight: "500", textAlign: "left",
+                border: "1px solid rgba(255,255,255,0.2)"
               }}>{item}</div>
             ))}
           </div>

@@ -4,7 +4,7 @@ export default function Footer() {
   return (
     <>
       {/* CONTACT */}
-      <section id="contact" style={{
+      <section id="contact" className="footer-contact" style={{
         padding: "5rem 2rem",
         borderTop: "1px solid #ede9fe",
         background: "#faf5ff"
@@ -23,7 +23,7 @@ export default function Footer() {
                 style={{ width: "38px", height: "38px", borderRadius: "50%", objectFit: "cover" }}
               />
               <span style={{ fontWeight: "700", fontSize: "18px", color: "#4c1d95" }}>
-                HR Skills <span style={{ color: "#7c3aed" }}>Stage</span>
+                HR Skills <span style={{ color: "#7c3aed" }}>SARL</span>
               </span>
             </div>
             <p style={{ color: "#6b7280", fontSize: "14px", lineHeight: "1.7" }}>
@@ -73,7 +73,7 @@ export default function Footer() {
       </section>
 
       {/* FOOTER BAS */}
-      <footer style={{
+      <footer className="site-footer" style={{
         padding: "1.5rem 2rem",
         borderTop: "1px solid #ede9fe",
         display: "flex", justifyContent: "space-between",
@@ -81,7 +81,7 @@ export default function Footer() {
         background: "#fff"
       }}>
         <p style={{ color: "#9ca3af", fontSize: "13px" }}>
-          © 2026 HR Skills Stage. Tous droits réservés.
+          © 2026 HR Skills SARL. Tous droits réservés.
         </p>
         <p style={{ color: "#9ca3af", fontSize: "13px" }}>
           Propulsé par <span style={{ color: "#7c3aed", fontWeight: "500" }}>HR Skills SARL</span>

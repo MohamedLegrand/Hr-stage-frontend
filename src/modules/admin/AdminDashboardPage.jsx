@@ -145,7 +145,7 @@ export default function AdminDashboardPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap');`}</style>
 
       {/* SIDEBAR */}
-      <div style={{
+      <div className="app-sidebar admin-sidebar" style={{
         position: "fixed", left: 0, top: 0, bottom: 0, width: "240px",
         background: "linear-gradient(180deg, #1e1b4b 0%, #4c1d95 100%)",
         display: "flex", flexDirection: "column", padding: "1.5rem 0", zIndex: 10
@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <img src="/images/logo.jpeg" alt="Logo" style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover" }} />
             <div>
-              <div style={{ fontWeight: "700", fontSize: "14px", color: "#fff" }}>HR Skills Stage</div>
+              <div style={{ fontWeight: "700", fontSize: "14px", color: "#fff" }}>HR Skills SARL</div>
               <div style={{ fontSize: "11px", color: "#c4b5f7" }}>Administration</div>
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* CONTENU */}
-      <div style={{ marginLeft: "240px", padding: "2rem" }}>
+      <div className="app-main admin-main" style={{ marginLeft: "240px", padding: "2rem" }}>
 
         <div style={{ marginBottom: "2rem" }}>
           <h1 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "24px", fontWeight: "700", color: "#1e293b" }}>
@@ -289,7 +289,7 @@ export default function AdminDashboardPage() {
 
         {/* DOSSIERS */}
         {activeMenu === "dossiers" && (
-          <div style={{ display: "grid", gridTemplateColumns: selectedDossier ? "1fr 1.5fr" : "1fr", gap: "1.5rem" }}>
+          <div className="dossier-grid" style={{ display: "grid", gridTemplateColumns: selectedDossier ? "1fr 1.5fr" : "1fr", gap: "1.5rem" }}>
             <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #ede9fe", padding: "1.5rem" }}>
               <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", fontWeight: "600", color: "#1e293b", marginBottom: "1.25rem" }}>
                 Liste des stagiaires ({dossiers.length})
