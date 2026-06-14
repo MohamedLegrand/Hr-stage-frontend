@@ -31,6 +31,7 @@ export default function Header() {
           { label: "Accueil", href: "#hero" },
           { label: "Comment ça marche", href: "#etapes" },
           { label: "Tarifs", href: "#tarifs" },
+          { label: "Contact", href: "#contact" },
         ].map((item) => (
           <a key={item.href} href={item.href} style={{
             color: "#6b7280", textDecoration: "none",

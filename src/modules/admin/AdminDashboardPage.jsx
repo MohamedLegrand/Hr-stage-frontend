@@ -139,6 +139,13 @@ export default function AdminDashboardPage() {
     preinscriptions: "Gestion des préinscriptions"
   }[activeMenu];
 
+  const pageHints = {
+    dashboard: "Vue globale des performances stagiaires, des paiements et des préinscriptions.",
+    dossiers: "Validez, consultez et gérez facilement les dossiers des stagiaires.",
+    paiements: "Suivez et validez les paiements des stagiaires en un clic.",
+    preinscriptions: "Gérez les demandes de pré-inscription et suivez leur progression."
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "#faf5ff", fontFamily: "'Inter', sans-serif" }}>
 

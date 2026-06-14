@@ -109,6 +109,13 @@ export default function DashboardPage() {
     return "En attente";
   };
 
+  const pageHints = {
+    dashboard: "Consultez le statut de vos documents, paiements et pré-inscription. Utilisez le menu pour accéder aux sections clés.",
+    profil: "Vérifiez et mettez à jour vos informations personnelles pour que votre dossier reste complet.",
+    documents: "Téléversez vos documents requis et suivez leur validation. Commencez par le bouton Uploader.",
+    paiement: "Initiez la pré-inscription ou les frais de stage et suivez le statut de vos paiements en temps réel."
+  };
+
   const inputStyle = {
     width: "100%", padding: "10px 14px", borderRadius: "8px",
     border: "1px solid #e5e7eb", fontSize: "14px", outline: "none",
@@ -223,6 +230,16 @@ export default function DashboardPage() {
             <span style={{ fontSize: "14px", fontWeight: "500", color: "#1e293b" }}>
               {profil ? `${profil.prenom} ${profil.nom}` : "Stagiaire"}
             </span>
+          </div>
+        </div>
+
+        <div style={{ background: "#eef2ff", border: "1px solid #dbeafe", borderRadius: "16px", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", gap: "0.9rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div style={{ width: "44px", height: "44px", borderRadius: "14px", display: "grid", placeItems: "center", background: "#eef2ff", color: "#7c3aed", fontSize: "18px" }}>💡</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: "14px", fontWeight: "700", color: "#1e293b", marginBottom: "0.35rem" }}>
+              {activeMenu === "dashboard" ? "Bienvenue dans votre tableau de bord" : "Guide de navigation"}
+            </div>
+            <p style={{ margin: 0, fontSize: "13px", lineHeight: "1.6", color: "#475569" }}>{pageHints[activeMenu]}</p>
           </div>
         </div>
 

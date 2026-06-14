@@ -82,9 +82,15 @@ export default function LoginPage() {
           }}>
             Bon retour 
           </h1>
-          <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "2rem" }}>
+          <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "0.75rem" }}>
             Connectez-vous pour accéder à votre espace
           </p>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "1.5rem", padding: "1rem", borderRadius: "12px", background: "#eef2ff", border: "1px solid #dbeafe" }}>
+            <span style={{ fontSize: "18px" }}>💡</span>
+            <p style={{ margin: 0, color: "#475569", fontSize: "13px", lineHeight: "1.6" }}>
+              Si vous êtes déjà inscrit, utilisez votre adresse email et mot de passe. Sinon, créez un compte via le lien ci-dessous.
+            </p>
+          </div>
 
           {error && (
             <div style={{

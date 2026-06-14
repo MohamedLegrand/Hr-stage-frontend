@@ -1,6 +1,16 @@
+import { useState } from "react";
 import { FiMail, FiPhone, FiMapPin } from "react-icons/fi";
 
 export default function Footer() {
+  const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
+
+  const handleContactSubmit = (e) => {
+    e.preventDefault();
+    const text = `Bonjour HR Skills SARL, je vous contacte depuis le site.\nNom: ${contactForm.name}\nEmail: ${contactForm.email}\nMessage: ${contactForm.message}`;
+    window.open(`https://wa.me/237686002112?text=${encodeURIComponent(text)}`, "_blank");
+    setContactForm({ name: "", email: "", message: "" });
+  };
+
   return (
     <>
       {/* CONTACT */}
@@ -53,10 +63,13 @@ export default function Footer() {
 
           <div>
             <h4 style={{ fontWeight: "600", marginBottom: "1rem", color: "#4c1d95", fontSize: "15px" }}>Contact</h4>
+            <p style={{ color: "#475569", fontSize: "13px", marginBottom: "1rem" }}>
+              Utilisez le formulaire ci-dessous pour envoyer un message directement sur WhatsApp au +237 686 002 112.
+            </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {[
                 { icon: <FiMail size={16} />, text: "contact@hrskills.com" },
-                { icon: <FiPhone size={16} />, text: "+237 6XX XXX XXX" },
+                { icon: <FiPhone size={16} />, text: "+237 686 002 112" },
                 { icon: <FiMapPin size={16} />, text: "Cameroun & Zone CEMAC" },
               ].map((item) => (
                 <div key={item.text} style={{

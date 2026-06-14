@@ -121,9 +121,15 @@ export default function RegisterPage() {
             }}>
               Créer mon compte
             </h1>
-            <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "2rem" }}>
+            <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "1rem" }}>
               Remplissez le formulaire pour déposer votre dossier de stage en ligne
             </p>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", padding: "1rem", borderRadius: "12px", background: "#f8fafc", border: "1px solid #e5e7eb", marginBottom: "1.5rem" }}>
+              <span style={{ fontSize: "18px" }}>💡</span>
+              <p style={{ margin: 0, color: "#475569", fontSize: "13px", lineHeight: "1.6" }}>
+                Suivez les étapes du formulaire pour compléter votre profil et vos informations académiques sans vous perdre.
+              </p>
+            </div>
           </div>
 
           {/* PROGRESS BAR AVEC DESIGN AMÉLIORÉ */}
