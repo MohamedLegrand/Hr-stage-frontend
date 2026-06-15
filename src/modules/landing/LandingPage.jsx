@@ -1,6 +1,7 @@
 import Header from "../../shared/components/Header";
 import Footer from "../../shared/components/Footer";
 import HeroSection from "./HeroSection";
+import ProgrammeCard from "./components/ProgrammeCard";
 import {
   FiFileText, FiCreditCard, FiCheckCircle, FiAward, FiUsers, FiTarget,
   FiLayers, FiCode, FiSmartphone, FiPenTool, FiServer, FiMapPin, FiGitBranch
@@ -8,6 +9,58 @@ import {
 import { Link } from "react-router-dom";
 
 export default function LandingPage() {
+  // Données des programmes
+  const programmes = [
+    { 
+      id: "analyse-uml",
+      image: "/images/landing/uml.jpg", 
+      icon: <FiLayers size={24} />, 
+      color: "#7c3aed", 
+      title: "Analyse UML & MERISE", 
+      desc: "Modélisation et conception de systèmes d'information." 
+    },
+    { 
+      id: "developpement-web",
+      image: "/images/landing/web.jpg", 
+      icon: <FiCode size={24} />, 
+      color: "#0ea5e9", 
+      title: "Développement Web", 
+      desc: "Conception et réalisation d'applications web modernes." 
+    },
+    { 
+      id: "developpement-mobile",
+      image: "/images/landing/mobile.jpg", 
+      icon: <FiSmartphone size={24} />, 
+      color: "#10b981", 
+      title: "Développement Mobile", 
+      desc: "Création d'applications mobiles Android et iOS." 
+    },
+    { 
+      id: "design-graphique",
+      image: "/images/landing/design.jpg", 
+      icon: <FiPenTool size={24} />, 
+      color: "#f59e0b", 
+      title: "Design Graphique", 
+      desc: "Création visuelle, identité de marque et supports graphiques." 
+    },
+    { 
+      id: "systemes-reseaux",
+      image: "/images/landing/reseau.jpg", 
+      icon: <FiServer size={24} />, 
+      color: "#ef4444", 
+      title: "Systèmes & Réseaux", 
+      desc: "Administration de systèmes, infrastructures et réseaux informatiques." 
+    },
+    { 
+      id: "devops",
+      image: "/images/landing/devop.jpg", 
+      icon: <FiGitBranch size={24} />, 
+      color: "#06b6d4", 
+      title: "DevOps", 
+      desc: "Intégration et déploiement continus, automatisation et gestion d'infrastructures." 
+    },
+  ];
+
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#fff", color: "#1e293b", minHeight: "100vh" }}>
 
@@ -48,54 +101,19 @@ export default function LandingPage() {
           ))}
         </div>
 
-        {/* PROGRAMMES DE STAGE */}
+        {/* PROGRAMMES DE STAGE AVEC CARTES CLIQUABLES */}
         <div>
           <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
             <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "clamp(1.4rem, 2.5vw, 1.8rem)", fontWeight: "700", color: "#1e293b" }}>
               Nos programmes de stage
             </h3>
+            <p style={{ color: "#64748b", marginTop: "0.5rem", fontSize: "14px" }}>
+              Cliquez sur un programme pour plus de détails
+            </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
-            {[
-              { image: "/images/landing/uml.jpg", icon: <FiLayers size={24} />, color: "#7c3aed", title: "Analyse UML & MERISE", desc: "Modélisation et conception de systèmes d'information." },
-              { image: "/images/landing/web.jpg", icon: <FiCode size={24} />, color: "#0ea5e9", title: "Développement Web", desc: "Conception et réalisation d'applications web modernes." },
-              { image: "/images/landing/mobile.jpg", icon: <FiSmartphone size={24} />, color: "#10b981", title: "Développement Mobile", desc: "Création d'applications mobiles Android et iOS." },
-              { image: "/images/landing/design.jpg", icon: <FiPenTool size={24} />, color: "#f59e0b", title: "Design Graphique", desc: "Création visuelle, identité de marque et supports graphiques." },
-              { image: "/images/landing/reseau.jpg", icon: <FiServer size={24} />, color: "#ef4444", title: "Systèmes & Réseaux", desc: "Administration de systèmes, infrastructures et réseaux informatiques." },
-              { image: "/images/landing/devop.jpg", icon: <FiGitBranch size={24} />, color: "#06b6d4", title: "DevOps", desc: "Intégration et déploiement continus, automatisation et gestion d'infrastructures." },
-            ].map((prog) => (
-              <div key={prog.title} style={{
-                background: "#fff", border: "1px solid #ede9fe", borderRadius: "14px",
-                overflow: "hidden", transition: "transform 0.3s, box-shadow 0.3s, border-color 0.3s"
-              }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = `0 12px 28px ${prog.color}1f`; e.currentTarget.style.borderColor = prog.color; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#ede9fe"; }}
-              >
-                {/* IMAGE */}
-                <div style={{
-                  position: "relative", height: "130px",
-                  backgroundImage: `url('${prog.image}')`,
-                  backgroundSize: "cover", backgroundPosition: "center"
-                }}>
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    background: `linear-gradient(180deg, transparent 40%, ${prog.color}cc 100%)`
-                  }} />
-                  <div style={{
-                    position: "absolute", bottom: "-22px", left: "16px",
-                    width: "44px", height: "44px", borderRadius: "12px",
-                    background: "#fff", border: `1px solid ${prog.color}33`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: prog.color, boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
-                  }}>{prog.icon}</div>
-                </div>
-
-                {/* CONTENU */}
-                <div style={{ padding: "1.75rem 1.25rem 1.25rem" }}>
-                  <h4 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "15px", fontWeight: "600", color: "#1e293b", marginBottom: "0.5rem" }}>{prog.title}</h4>
-                  <p style={{ fontSize: "13px", color: "#64748b", lineHeight: "1.6" }}>{prog.desc}</p>
-                </div>
-              </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem" }}>
+            {programmes.map((programme) => (
+              <ProgrammeCard key={programme.id} programme={programme} />
             ))}
           </div>
         </div>
@@ -266,4 +284,4 @@ export default function LandingPage() {
       <Footer />
     </div>
   );
-}  
+}

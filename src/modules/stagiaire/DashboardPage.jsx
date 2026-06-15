@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../auth/authSlice";
@@ -6,7 +6,9 @@ import { fetchProfil } from "./stagiaireSlice";
 import { fetchDocuments } from "../documents/documentsSlice";
 import { fetchStatutPaiement, initierPaiement } from "../paiement/paiementSlice";
 import { fetchStatutPreinscription, initierPreinscription } from "../preinscription/preinscriptionSlice";
-import { FiFileText, FiCreditCard, FiCheckCircle, FiLogOut, FiUser, FiClock, FiUpload, FiX, FiUserCheck } from "react-icons/fi";
+import { fetchMesMessages } from "../messages/messagesSlice";
+import messagesService from "../messages/messagesService";
+import { FiFileText, FiCreditCard, FiCheckCircle, FiLogOut, FiUser, FiClock, FiUpload, FiX, FiUserCheck, FiBell, FiMessageSquare, FiChevronRight } from "react-icons/fi";
 import documentsService from "../documents/documentsService";
 
 const DOC_TYPES = [
@@ -16,7 +18,10 @@ const DOC_TYPES = [
   { value: "cni_ou_recepice", label: "CNI ou récépissé" },
 ];
 
-const OPERATEURS = ["MTN", "ORANGE", "YOOME", "BLUE"];
+const OPERATEURS = [
+  { value: "MTN",    label: "MTN Money",    color: "#FFC300", bg: "#FFFBEA", border: "#FDE68A" },
+  { value: "ORANGE", label: "Orange Money", color: "#FF6600", bg: "#FFF7ED", border: "#FED7AA" },
+];
 
 export default function DashboardPage() {
   const dispatch = useDispatch();
@@ -25,6 +30,7 @@ export default function DashboardPage() {
   const { liste: documents } = useSelector((state) => state.documents);
   const { paiement, loading: paiementLoading } = useSelector((state) => state.paiement);
   const { preinscription, loading: preinscriptionLoading, error: preinscriptionError } = useSelector((state) => state.preinscription);
+  const { liste: messages } = useSelector((state) => state.messages);
 
   const [showUpload, setShowUpload] = useState(false);
   const [showPaiement, setShowPaiement] = useState(false);
@@ -34,7 +40,13 @@ export default function DashboardPage() {
   const [uploadError, setUploadError] = useState("");
   const [paiementForm, setPaiementForm] = useState({ telephone: "", operateur: "MTN" });
   const [preinscriptionForm, setPreinscriptionForm] = useState({ telephone: "", operateur: "MTN" });
+  const [showPaiementTotal, setShowPaiementTotal] = useState(false);
+  const [paiementTotalForm, setPaiementTotalForm] = useState({ telephone: "", operateur: "MTN" });
+  const [totalLoading, setTotalLoading] = useState(false);
+  const [totalError, setTotalError] = useState("");
   const [activeMenu, setActiveMenu] = useState("dashboard");
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [lus, setLus] = useState([]);
 
   useEffect(() => {
     dispatch(fetchProfil());
@@ -42,6 +54,40 @@ export default function DashboardPage() {
     dispatch(fetchStatutPaiement());
     dispatch(fetchStatutPreinscription());
   }, []);
+
+  useEffect(() => {
+    if (profil?.id) {
+      dispatch(fetchMesMessages(profil.id));
+      setLus(messagesService.getLus(profil.id));
+    }
+  }, [profil?.id]);
+
+  // Notifications générées depuis l'état existant + messages
+  const notifications = useMemo(() => {
+    const notifs = [];
+    if (paiement) {
+      const label = paiement.statut === "valide" ? "✅ Frais de stage validés" : paiement.statut === "echoue" ? "❌ Paiement de stage échoué" : "⏳ Paiement de stage en attente";
+      notifs.push({ id: `pay-${paiement.statut}`, type: "paiement", texte: label, date: paiement.paye_le || paiement.created_at });
+    }
+    if (preinscription) {
+      const label = preinscription.statut === "valide" ? "✅ Pré-inscription validée" : preinscription.statut === "rejete" ? "❌ Pré-inscription rejetée" : "⏳ Pré-inscription en attente";
+      notifs.push({ id: `preinsc-${preinscription.statut}`, type: "preinscription", texte: label, date: preinscription.paye_le || preinscription.created_at });
+    }
+    documents.forEach((doc) => {
+      if (doc.statut === "valide") notifs.push({ id: `doc-v-${doc.id}`, type: "document", texte: `✅ Document validé : ${doc.type?.replace(/_/g, " ")}`, date: doc.updated_at });
+      if (doc.statut === "rejete") notifs.push({ id: `doc-r-${doc.id}`, type: "document", texte: `❌ Document rejeté : ${doc.type?.replace(/_/g, " ")}`, date: doc.updated_at });
+    });
+    messages.forEach((m) => notifs.push({ id: `msg-${m.id}`, type: "message", texte: `📢 ${m.sujet}`, date: m.date }));
+    return notifs;
+  }, [paiement, preinscription, documents, messages]);
+
+  const notifsNonLues = notifications.filter((n) => !lus.includes(n.id)).length;
+
+  const marquerToutesLues = () => {
+    const ids = notifications.map((n) => n.id);
+    setLus(ids);
+    if (profil?.id) localStorage.setItem(`hrskills_lu_${profil.id}`, JSON.stringify(ids));
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -89,6 +135,23 @@ export default function DashboardPage() {
     if (result.payload?.reference_interne) {
       setShowPreinscription(false);
       dispatch(fetchStatutPreinscription());
+    }
+  };
+
+  const handlePaiementTotal = async (e) => {
+    e.preventDefault();
+    setTotalLoading(true);
+    setTotalError("");
+    try {
+      await dispatch(initierPreinscription(paiementTotalForm));
+      await dispatch(initierPaiement(paiementTotalForm));
+      dispatch(fetchStatutPreinscription());
+      dispatch(fetchStatutPaiement());
+      setShowPaiementTotal(false);
+    } catch {
+      setTotalError("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setTotalLoading(false);
     }
   };
 
@@ -163,6 +226,7 @@ export default function DashboardPage() {
             { id: "profil", icon: <FiUser size={18} />, label: "Mon profil" },
             { id: "documents", icon: <FiFileText size={18} />, label: "Mes documents" },
             { id: "paiement", icon: <FiCreditCard size={18} />, label: "Paiement" },
+            { id: "messages", icon: <FiMessageSquare size={18} />, label: "Messages", badge: messages.filter(m => !lus.includes(`msg-${m.id}`)).length },
           ].map((item) => (
             <div key={item.id} onClick={() => setActiveMenu(item.id)} style={{
               display: "flex", alignItems: "center", gap: "10px",
@@ -175,7 +239,14 @@ export default function DashboardPage() {
               onMouseEnter={e => { if (activeMenu !== item.id) e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
               onMouseLeave={e => { if (activeMenu !== item.id) e.currentTarget.style.background = "transparent"; }}
             >
-              {item.icon} {item.label}
+              <span style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1 }}>
+                {item.icon} {item.label}
+              </span>
+              {item.badge > 0 && (
+                <span style={{ background: "#ef4444", color: "#fff", borderRadius: "99px", fontSize: "11px", fontWeight: "700", padding: "1px 7px", minWidth: "18px", textAlign: "center" }}>
+                  {item.badge}
+                </span>
+              )}
             </div>
           ))}
         </nav>
@@ -209,27 +280,102 @@ export default function DashboardPage() {
               {activeMenu === "profil" && "Mon profil"}
               {activeMenu === "documents" && "Mes documents"}
               {activeMenu === "paiement" && "Paiement"}
+              {activeMenu === "messages" && "Messages"}
             </h1>
             <p style={{ color: "#64748b", fontSize: "14px" }}>
               {profil ? `Bienvenue, ${profil.prenom} ${profil.nom}` : "Chargement..."}
             </p>
           </div>
-          <div style={{
-            display: "flex", alignItems: "center", gap: "10px",
-            padding: "8px 16px", borderRadius: "10px",
-            background: "#fff", border: "1px solid #ede9fe"
-          }}>
-            <div style={{
-              width: "32px", height: "32px", borderRadius: "50%",
-              background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontWeight: "700", fontSize: "13px"
-            }}>
-              {profil ? profil.prenom[0] : "S"}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {/* CLOCHE NOTIFICATIONS */}
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowNotifs((v) => !v)}
+                style={{
+                  position: "relative", background: "#fff", border: "1px solid #ede9fe",
+                  borderRadius: "10px", padding: "8px 12px", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: "6px", color: "#4c1d95",
+                }}
+              >
+                <FiBell size={18} />
+                {notifsNonLues > 0 && (
+                  <span style={{
+                    position: "absolute", top: "-6px", right: "-6px",
+                    background: "#ef4444", color: "#fff", borderRadius: "99px",
+                    fontSize: "10px", fontWeight: "700", padding: "1px 5px", minWidth: "16px", textAlign: "center"
+                  }}>
+                    {notifsNonLues}
+                  </span>
+                )}
+              </button>
+
+              {/* PANNEAU NOTIFICATIONS */}
+              {showNotifs && (
+                <div style={{
+                  position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 50,
+                  background: "#fff", borderRadius: "14px", border: "1px solid #ede9fe",
+                  boxShadow: "0 12px 40px rgba(0,0,0,0.12)", width: "340px",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem", borderBottom: "1px solid #f3f4f6" }}>
+                    <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "700", fontSize: "14px", color: "#1e293b" }}>
+                      Notifications {notifsNonLues > 0 && <span style={{ color: "#ef4444" }}>({notifsNonLues})</span>}
+                    </span>
+                    {notifsNonLues > 0 && (
+                      <button onClick={marquerToutesLues} style={{ fontSize: "12px", color: "#7c3aed", background: "none", border: "none", cursor: "pointer", fontWeight: "500" }}>
+                        Tout marquer lu
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ maxHeight: "360px", overflowY: "auto" }}>
+                    {notifications.length === 0 ? (
+                      <div style={{ padding: "2rem", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
+                        Aucune notification
+                      </div>
+                    ) : notifications.map((n) => {
+                      const nonLue = !lus.includes(n.id);
+                      const typeColor = n.type === "message" ? "#7c3aed" : n.type === "paiement" ? "#0ea5e9" : n.type === "preinscription" ? "#10b981" : "#f59e0b";
+                      return (
+                        <div key={n.id} style={{
+                          padding: "0.85rem 1.25rem", borderBottom: "1px solid #f9fafb",
+                          background: nonLue ? "#faf5ff" : "#fff",
+                          display: "flex", gap: "10px", alignItems: "flex-start",
+                        }}>
+                          <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: nonLue ? typeColor : "transparent", border: `2px solid ${typeColor}`, marginTop: "5px", flexShrink: 0 }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: "13px", color: "#1e293b", lineHeight: "1.5" }}>{n.texte}</div>
+                            {n.date && <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{new Date(n.date).toLocaleDateString("fr-FR")}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid #f3f4f6" }}>
+                    <button onClick={() => { setActiveMenu("messages"); setShowNotifs(false); }} style={{ fontSize: "13px", color: "#7c3aed", background: "none", border: "none", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                      Voir tous les messages <FiChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <span style={{ fontSize: "14px", fontWeight: "500", color: "#1e293b" }}>
-              {profil ? `${profil.prenom} ${profil.nom}` : "Stagiaire"}
-            </span>
+
+            {/* AVATAR */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: "10px",
+              padding: "8px 16px", borderRadius: "10px",
+              background: "#fff", border: "1px solid #ede9fe"
+            }}>
+              <div style={{
+                width: "32px", height: "32px", borderRadius: "50%",
+                background: "linear-gradient(135deg, #7c3aed, #a78bfa)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#fff", fontWeight: "700", fontSize: "13px"
+              }}>
+                {profil ? profil.prenom[0] : "S"}
+              </div>
+              <span style={{ fontSize: "14px", fontWeight: "500", color: "#1e293b" }}>
+                {profil ? `${profil.prenom} ${profil.nom}` : "Stagiaire"}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -283,6 +429,47 @@ export default function DashboardPage() {
               ))}
             </div>
 
+            {/* BANDEAU PAIEMENT GROUPÉ — tableau de bord */}
+            {(!preinscription || preinscription.statut !== "valide") && (!paiement || paiement.statut !== "valide") && (
+              <div style={{
+                background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+                borderRadius: "14px", padding: "1.25rem 1.5rem",
+                marginBottom: "1.5rem",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                flexWrap: "wrap", gap: "1rem",
+                boxShadow: "0 8px 24px rgba(124,58,237,0.25)",
+              }}>
+                <div>
+                  <div style={{ fontSize: "11px", color: "#c4b5fd", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "2px" }}>
+                    Paiement groupé
+                  </div>
+                  <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", fontWeight: "700", color: "#fff" }}>
+                    Pré-inscription + Frais de stage en une seule fois
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#ddd6fe", marginTop: "2px" }}>
+                    5 000 XAF + 40 000 XAF
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexShrink: 0 }}>
+                  <span style={{ fontFamily: "'Poppins', sans-serif", fontSize: "26px", fontWeight: "800", color: "#fff" }}>
+                    45 000 <span style={{ fontSize: "13px", fontWeight: "500", color: "#c4b5fd" }}>XAF</span>
+                  </span>
+                  <button
+                    onClick={() => setShowPaiementTotal(true)}
+                    style={{
+                      padding: "10px 20px", borderRadius: "10px",
+                      background: "#fff", color: "#7c3aed",
+                      border: "none", fontWeight: "700", fontSize: "13px",
+                      cursor: "pointer", whiteSpace: "nowrap",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    }}
+                  >
+                    Payer 45 000 XAF →
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="summary-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "1.5rem" }}>
               {/* DOCUMENTS */}
               <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #ede9fe", padding: "1.5rem" }}>
@@ -322,6 +509,84 @@ export default function DashboardPage() {
               />
             </div>
           </>
+        )}
+
+        {/* MESSAGES */}
+        {activeMenu === "messages" && (
+          <div style={{ maxWidth: "750px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <p style={{ color: "#64748b", fontSize: "14px", margin: 0 }}>
+                Messages envoyés par l'administration HR Skills SARL
+              </p>
+              {messages.some(m => !lus.includes(`msg-${m.id}`)) && (
+                <button
+                  onClick={() => { messagesService.marquerTousLus(messages, profil?.id); setLus(messages.map(m => `msg-${m.id}`)); }}
+                  style={{ fontSize: "13px", color: "#7c3aed", background: "none", border: "1px solid #c4b5fd", borderRadius: "8px", padding: "6px 14px", cursor: "pointer", fontWeight: "500" }}
+                >
+                  Tout marquer comme lu
+                </button>
+              )}
+            </div>
+
+            {messages.length === 0 ? (
+              <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #ede9fe", padding: "4rem 2rem", textAlign: "center" }}>
+                <FiMessageSquare size={40} style={{ color: "#c4b5fd", marginBottom: "1rem" }} />
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", fontWeight: "600", color: "#1e293b", marginBottom: "6px" }}>Aucun message</div>
+                <div style={{ fontSize: "14px", color: "#94a3b8" }}>L'administration n'a pas encore envoyé de message.</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {messages.map((msg) => {
+                  const nonLu = !lus.includes(`msg-${msg.id}`);
+                  return (
+                    <div
+                      key={msg.id}
+                      onClick={() => {
+                        messagesService.marquerLu(msg.id, profil?.id);
+                        setLus(prev => prev.includes(`msg-${msg.id}`) ? prev : [...prev, `msg-${msg.id}`]);
+                      }}
+                      style={{
+                        background: "#fff", borderRadius: "12px", cursor: "pointer",
+                        border: `1px solid ${nonLu ? "#c4b5fd" : "#ede9fe"}`,
+                        padding: "1.25rem 1.5rem",
+                        boxShadow: nonLu ? "0 4px 16px rgba(124,58,237,0.08)" : "none",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", flex: 1 }}>
+                          <div style={{
+                            width: "38px", height: "38px", borderRadius: "10px", flexShrink: 0,
+                            background: nonLu ? "linear-gradient(135deg, #7c3aed, #a78bfa)" : "#f5f3ff",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            color: nonLu ? "#fff" : "#7c3aed",
+                          }}>
+                            <FiMessageSquare size={16} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                              <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "600", fontSize: "14px", color: "#1e293b" }}>
+                                {msg.sujet}
+                              </span>
+                              {nonLu && (
+                                <span style={{ background: "#7c3aed", color: "#fff", borderRadius: "99px", fontSize: "10px", fontWeight: "700", padding: "1px 8px" }}>
+                                  Nouveau
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: "13px", color: "#64748b", lineHeight: "1.6" }}>{msg.contenu}</div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#94a3b8", flexShrink: 0 }}>
+                          {new Date(msg.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* PROFIL */}
@@ -403,7 +668,52 @@ export default function DashboardPage() {
 
         {/* PAIEMENT PAGE — deux cartes côte à côte */}
         {activeMenu === "paiement" && (
-          <div className="payment-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", maxWidth: "900px" }}>
+          <div style={{ maxWidth: "900px" }}>
+
+          {/* BANDEAU PAIEMENT GROUPÉ — visible uniquement si les deux ne sont pas encore validés */}
+          {(!preinscription || preinscription.statut !== "valide") && (!paiement || paiement.statut !== "valide") && (
+            <div style={{
+              background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+              borderRadius: "16px", padding: "1.5rem 2rem",
+              marginBottom: "1.5rem",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              flexWrap: "wrap", gap: "1rem",
+              boxShadow: "0 8px 24px rgba(124,58,237,0.3)",
+            }}>
+              <div>
+                <div style={{ fontSize: "12px", color: "#c4b5fd", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "4px" }}>
+                  Offre groupée — économisez du temps
+                </div>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "22px", fontWeight: "800", color: "#fff" }}>
+                  Tout payer en une seule fois
+                </div>
+                <div style={{ fontSize: "13px", color: "#ddd6fe", marginTop: "4px" }}>
+                  Pré-inscription (5 000 XAF) + Frais de stage (40 000 XAF)
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "32px", fontWeight: "800", color: "#fff", lineHeight: 1 }}>
+                  45 000 <span style={{ fontSize: "16px", fontWeight: "500", color: "#c4b5fd" }}>XAF</span>
+                </div>
+                <button
+                  onClick={() => setShowPaiementTotal(true)}
+                  style={{
+                    marginTop: "12px", padding: "10px 24px", borderRadius: "10px",
+                    background: "#fff", color: "#7c3aed",
+                    border: "none", fontWeight: "700", fontSize: "14px",
+                    cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    transition: "opacity 0.2s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
+                  onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                >
+                  Payer 45 000 XAF →
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="payment-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
 
             {/* CARTE PRE-INSCRIPTION */}
             <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #ede9fe", padding: "2rem" }}>
@@ -474,6 +784,7 @@ export default function DashboardPage() {
                 </button>
               )}
             </div>
+          </div>
           </div>
         )}
       </div>
@@ -548,10 +859,24 @@ export default function DashboardPage() {
             </div>
             <form onSubmit={handlePreinscription} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Opérateur Mobile Money</label>
-                <select value={preinscriptionForm.operateur} onChange={e => setPreinscriptionForm({ ...preinscriptionForm, operateur: e.target.value })} style={inputStyle}>
-                  {OPERATEURS.map(op => <option key={op} value={op}>{op}</option>)}
-                </select>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "8px" }}>Opérateur Mobile Money</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  {OPERATEURS.map(op => (
+                    <button type="button" key={op.value}
+                      onClick={() => setPreinscriptionForm({ ...preinscriptionForm, operateur: op.value })}
+                      style={{
+                        padding: "14px 8px", borderRadius: "10px", cursor: "pointer",
+                        border: `2px solid ${preinscriptionForm.operateur === op.value ? op.color : "#e5e7eb"}`,
+                        background: preinscriptionForm.operateur === op.value ? op.bg : "#fff",
+                        fontWeight: "700", fontSize: "13px",
+                        color: preinscriptionForm.operateur === op.value ? op.color : "#9ca3af",
+                        transition: "all 0.2s", textAlign: "center",
+                      }}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Numéro de téléphone</label>
@@ -578,6 +903,84 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* MODAL PAIEMENT GROUPÉ — 45 000 XAF */}
+      {showPaiementTotal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "420px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div>
+                <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "18px", fontWeight: "700", color: "#1e293b", margin: 0 }}>Paiement groupé</h3>
+                <p style={{ fontSize: "13px", color: "#64748b", margin: "4px 0 0" }}>Pré-inscription + Frais de stage</p>
+              </div>
+              <button onClick={() => { setShowPaiementTotal(false); setTotalError(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><FiX size={20} /></button>
+            </div>
+
+            {/* Récapitulatif */}
+            <div style={{ borderRadius: "12px", background: "linear-gradient(135deg, #4c1d95, #7c3aed)", padding: "1.25rem", marginBottom: "1.25rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "13px", color: "#ddd6fe" }}>
+                <span>Pré-inscription</span><span>5 000 XAF</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", fontSize: "13px", color: "#ddd6fe" }}>
+                <span>Frais de stage</span><span>40 000 XAF</span>
+              </div>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "700", color: "#fff", fontSize: "15px" }}>Total</span>
+                <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "800", color: "#fff", fontSize: "22px" }}>45 000 XAF</span>
+              </div>
+            </div>
+
+            <form onSubmit={handlePaiementTotal} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "8px" }}>Opérateur Mobile Money</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  {OPERATEURS.map(op => (
+                    <button type="button" key={op.value}
+                      onClick={() => setPaiementTotalForm({ ...paiementTotalForm, operateur: op.value })}
+                      style={{
+                        padding: "14px 8px", borderRadius: "10px", cursor: "pointer",
+                        border: `2px solid ${paiementTotalForm.operateur === op.value ? op.color : "#e5e7eb"}`,
+                        background: paiementTotalForm.operateur === op.value ? op.bg : "#fff",
+                        fontWeight: "700", fontSize: "13px",
+                        color: paiementTotalForm.operateur === op.value ? op.color : "#9ca3af",
+                        transition: "all 0.2s", textAlign: "center",
+                      }}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Numéro de téléphone</label>
+                <input
+                  required placeholder="677000000"
+                  value={paiementTotalForm.telephone}
+                  onChange={e => setPaiementTotalForm({ ...paiementTotalForm, telephone: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ padding: "12px", borderRadius: "8px", background: "#f5f3ff", border: "1px solid #c4b5fd", fontSize: "13px", color: "#4c1d95" }}>
+                💡 Vous recevrez deux notifications sur votre téléphone pour valider les deux paiements.
+              </div>
+              {totalError && (
+                <div style={{ padding: "10px", borderRadius: "8px", background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: "13px" }}>
+                  ❌ {totalError}
+                </div>
+              )}
+              <button type="submit" disabled={totalLoading} style={{
+                padding: "14px", borderRadius: "8px",
+                background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+                color: "#fff", border: "none", fontSize: "15px", fontWeight: "700",
+                cursor: totalLoading ? "not-allowed" : "pointer", opacity: totalLoading ? 0.7 : 1,
+                boxShadow: "0 8px 20px rgba(124,58,237,0.3)",
+              }}>
+                {totalLoading ? "Traitement en cours..." : "Confirmer — 45 000 XAF"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* MODAL PAIEMENT FRAIS DE STAGE */}
       {showPaiement && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
@@ -588,10 +991,24 @@ export default function DashboardPage() {
             </div>
             <form onSubmit={handlePaiement} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Opérateur Mobile Money</label>
-                <select value={paiementForm.operateur} onChange={e => setPaiementForm({ ...paiementForm, operateur: e.target.value })} style={inputStyle}>
-                  {OPERATEURS.map(op => <option key={op} value={op}>{op}</option>)}
-                </select>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "8px" }}>Opérateur Mobile Money</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  {OPERATEURS.map(op => (
+                    <button type="button" key={op.value}
+                      onClick={() => setPaiementForm({ ...paiementForm, operateur: op.value })}
+                      style={{
+                        padding: "14px 8px", borderRadius: "10px", cursor: "pointer",
+                        border: `2px solid ${paiementForm.operateur === op.value ? op.color : "#e5e7eb"}`,
+                        background: paiementForm.operateur === op.value ? op.bg : "#fff",
+                        fontWeight: "700", fontSize: "13px",
+                        color: paiementForm.operateur === op.value ? op.color : "#9ca3af",
+                        transition: "all 0.2s", textAlign: "center",
+                      }}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Numéro de téléphone</label>

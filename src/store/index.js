@@ -5,6 +5,7 @@ import documentsReducer from "../modules/documents/documentsSlice";
 import paiementReducer from "../modules/paiement/paiementSlice";
 import preinscriptionReducer from "../modules/preinscription/preinscriptionSlice";
 import adminReducer from "../modules/admin/adminSlice";
+import messagesReducer from "../modules/messages/messagesSlice";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     paiement: paiementReducer,
     preinscription: preinscriptionReducer,
     admin: adminReducer,
+    messages: messagesReducer,
   }
 });
 

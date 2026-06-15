@@ -5,18 +5,11 @@ import { logout } from "../auth/authSlice";
 import { fetchDashboard, fetchDossiers } from "./adminSlice";
 import adminService from "./adminService";
 import preinscriptionService from "../preinscription/preinscriptionService";
+import { fetchMessagesEnvoyes, envoyerMessage } from "../messages/messagesSlice";
 import {
-  FiUsers,
-  FiFileText,
-  FiCreditCard,
-  FiCheckCircle,
-  FiLogOut,
-  FiBarChart2,
-  FiEye,
-  FiX,
-  FiExternalLink,
-  FiUserCheck,
-  FiClock
+  FiUsers, FiFileText, FiCreditCard, FiCheckCircle, FiLogOut,
+  FiBarChart2, FiEye, FiX, FiExternalLink, FiUserCheck, FiClock,
+  FiMessageSquare, FiSend, FiGlobe
 } from "react-icons/fi";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -25,26 +18,36 @@ export default function AdminDashboardPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { dashboard, dossiers } = useSelector((state) => state.admin);
+  const { envoyes: messagesEnvoyes, loading: msgLoading } = useSelector((state) => state.messages);
   const [activeMenu, setActiveMenu] = useState("dashboard");
   const [selectedDossier, setSelectedDossier] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [commentaire, setCommentaire] = useState("");
   const [paiements, setPaiements] = useState([]);
   const [preinscriptions, setPreinscriptions] = useState([]);
+  const [msgForm, setMsgForm] = useState({ destinataire: "all", sujet: "", contenu: "" });
+  const [msgSucces, setMsgSucces] = useState("");
 
   useEffect(() => {
     dispatch(fetchDashboard());
     dispatch(fetchDossiers());
+    dispatch(fetchMessagesEnvoyes());
   }, []);
 
   useEffect(() => {
-    if (activeMenu === "paiements") {
-      adminService.getPaiements().then(setPaiements);
-    }
-    if (activeMenu === "preinscriptions") {
-      preinscriptionService.getListe().then(setPreinscriptions);
-    }
+    if (activeMenu === "paiements") adminService.getPaiements().then(setPaiements);
+    if (activeMenu === "preinscriptions") preinscriptionService.getListe().then(setPreinscriptions);
+    if (activeMenu === "messages") dispatch(fetchMessagesEnvoyes());
   }, [activeMenu]);
+
+  const handleEnvoyerMessage = async (e) => {
+    e.preventDefault();
+    if (!msgForm.sujet.trim() || !msgForm.contenu.trim()) return;
+    await dispatch(envoyerMessage(msgForm));
+    setMsgSucces("Message envoyé avec succès !");
+    setMsgForm({ destinataire: "all", sujet: "", contenu: "" });
+    setTimeout(() => setMsgSucces(""), 3000);
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -136,14 +139,16 @@ export default function AdminDashboardPage() {
     dashboard: "Tableau de bord",
     dossiers: "Gestion des dossiers",
     paiements: "Gestion des paiements",
-    preinscriptions: "Gestion des préinscriptions"
+    preinscriptions: "Gestion des préinscriptions",
+    messages: "Messages aux stagiaires",
   }[activeMenu];
 
   const pageHints = {
     dashboard: "Vue globale des performances stagiaires, des paiements et des préinscriptions.",
     dossiers: "Validez, consultez et gérez facilement les dossiers des stagiaires.",
     paiements: "Suivez et validez les paiements des stagiaires en un clic.",
-    preinscriptions: "Gérez les demandes de pré-inscription et suivez leur progression."
+    preinscriptions: "Gérez les demandes de pré-inscription et suivez leur progression.",
+    messages: "Envoyez des informations à un stagiaire en particulier ou à tous les stagiaires.",
   };
 
   return (
@@ -173,6 +178,7 @@ export default function AdminDashboardPage() {
             { id: "dossiers", icon: <FiFileText size={18} />, label: "Dossiers" },
             { id: "preinscriptions", icon: <FiUserCheck size={18} />, label: "Préinscriptions" },
             { id: "paiements", icon: <FiCreditCard size={18} />, label: "Paiements" },
+            { id: "messages", icon: <FiMessageSquare size={18} />, label: "Messages" },
           ].map((item) => (
             <div
               key={item.id}
@@ -500,6 +506,155 @@ export default function AdminDashboardPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* MESSAGES */}
+        {activeMenu === "messages" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "1.5rem", alignItems: "flex-start" }}>
+
+            {/* FORMULAIRE D'ENVOI */}
+            <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #ede9fe", padding: "1.75rem" }}>
+              <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", fontWeight: "700", color: "#1e293b", margin: "0 0 1.25rem" }}>
+                Envoyer un message
+              </h3>
+
+              <form onSubmit={handleEnvoyerMessage} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {/* Destinataire */}
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "8px" }}>Destinataire</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+                    <button type="button"
+                      onClick={() => setMsgForm({ ...msgForm, destinataire: "all" })}
+                      style={{
+                        padding: "12px 8px", borderRadius: "10px", cursor: "pointer", textAlign: "center",
+                        border: `2px solid ${msgForm.destinataire === "all" ? "#7c3aed" : "#e5e7eb"}`,
+                        background: msgForm.destinataire === "all" ? "#f5f3ff" : "#fff",
+                        color: msgForm.destinataire === "all" ? "#7c3aed" : "#9ca3af",
+                        fontWeight: "700", fontSize: "13px", transition: "all 0.2s",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                      }}
+                    >
+                      <FiGlobe size={14} /> Tous les stagiaires
+                    </button>
+                    <button type="button"
+                      onClick={() => setMsgForm({ ...msgForm, destinataire: "" })}
+                      style={{
+                        padding: "12px 8px", borderRadius: "10px", cursor: "pointer", textAlign: "center",
+                        border: `2px solid ${msgForm.destinataire !== "all" ? "#7c3aed" : "#e5e7eb"}`,
+                        background: msgForm.destinataire !== "all" ? "#f5f3ff" : "#fff",
+                        color: msgForm.destinataire !== "all" ? "#7c3aed" : "#9ca3af",
+                        fontWeight: "700", fontSize: "13px", transition: "all 0.2s",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                      }}
+                    >
+                      <FiUsers size={14} /> Stagiaire spécifique
+                    </button>
+                  </div>
+
+                  {/* Sélection stagiaire spécifique */}
+                  {msgForm.destinataire !== "all" && (
+                    <select
+                      value={msgForm.destinataire}
+                      onChange={e => setMsgForm({ ...msgForm, destinataire: e.target.value })}
+                      required
+                      style={{ ...inputStyle, marginTop: "4px" }}
+                    >
+                      <option value="">— Choisir un stagiaire —</option>
+                      {dossiers.map(d => (
+                        <option key={d.user_id} value={String(d.user_id)}>
+                          {d.prenom} {d.nom} — {d.etablissement}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Sujet */}
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Sujet</label>
+                  <input
+                    required placeholder="Objet du message"
+                    value={msgForm.sujet}
+                    onChange={e => setMsgForm({ ...msgForm, sujet: e.target.value })}
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* Contenu */}
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" }}>Message</label>
+                  <textarea
+                    required rows={5} placeholder="Rédigez votre message ici..."
+                    value={msgForm.contenu}
+                    onChange={e => setMsgForm({ ...msgForm, contenu: e.target.value })}
+                    style={{ ...inputStyle, resize: "vertical", lineHeight: "1.6" }}
+                  />
+                </div>
+
+                {msgSucces && (
+                  <div style={{ padding: "10px 14px", borderRadius: "8px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#065f46", fontSize: "13px", fontWeight: "500" }}>
+                    ✅ {msgSucces}
+                  </div>
+                )}
+
+                <button type="submit" disabled={msgLoading} style={{
+                  padding: "12px", borderRadius: "8px",
+                  background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+                  color: "#fff", border: "none", fontSize: "14px", fontWeight: "700",
+                  cursor: msgLoading ? "not-allowed" : "pointer", opacity: msgLoading ? 0.7 : 1,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                  boxShadow: "0 6px 18px rgba(124,58,237,0.25)",
+                }}>
+                  <FiSend size={16} /> {msgLoading ? "Envoi..." : msgForm.destinataire === "all" ? "Envoyer à tous" : "Envoyer au stagiaire"}
+                </button>
+              </form>
+            </div>
+
+            {/* MESSAGES ENVOYÉS */}
+            <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #ede9fe", padding: "1.75rem" }}>
+              <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", fontWeight: "700", color: "#1e293b", margin: "0 0 1.25rem" }}>
+                Messages envoyés ({messagesEnvoyes.length})
+              </h3>
+
+              {messagesEnvoyes.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "3rem 1rem", color: "#94a3b8" }}>
+                  <FiMessageSquare size={36} style={{ marginBottom: "1rem", color: "#c4b5fd" }} />
+                  <div style={{ fontSize: "14px" }}>Aucun message envoyé pour l'instant.</div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "480px", overflowY: "auto" }}>
+                  {messagesEnvoyes.map((msg) => (
+                    <div key={msg.id} style={{
+                      padding: "1rem 1.25rem", borderRadius: "10px",
+                      border: "1px solid #f3f4f6", background: "#fafafa",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", marginBottom: "6px" }}>
+                        <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "600", fontSize: "13px", color: "#1e293b" }}>
+                          {msg.sujet}
+                        </span>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0 }}>
+                          <span style={{
+                            fontSize: "11px", padding: "2px 8px", borderRadius: "99px", fontWeight: "600",
+                            background: msg.destinataire === "all" ? "#f5f3ff" : "#f0f9ff",
+                            color: msg.destinataire === "all" ? "#7c3aed" : "#0ea5e9",
+                            border: `1px solid ${msg.destinataire === "all" ? "#c4b5fd" : "#bae6fd"}`,
+                          }}>
+                            {msg.destinataire === "all" ? "Tous" : `Stagiaire #${msg.destinataire}`}
+                          </span>
+                          <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            {new Date(msg.date).toLocaleDateString("fr-FR")}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#64748b", lineHeight: "1.5" }}>
+                        {msg.contenu.length > 120 ? `${msg.contenu.slice(0, 120)}…` : msg.contenu}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
