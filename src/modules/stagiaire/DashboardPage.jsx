@@ -8,7 +8,7 @@ import { fetchStatutPaiement, initierPaiement } from "../paiement/paiementSlice"
 import { fetchStatutPreinscription, initierPreinscription } from "../preinscription/preinscriptionSlice";
 import { fetchMesMessages } from "../messages/messagesSlice";
 import messagesService from "../messages/messagesService";
-import { FiFileText, FiCreditCard, FiCheckCircle, FiLogOut, FiUser, FiClock, FiUpload, FiX, FiUserCheck, FiBell, FiMessageSquare, FiChevronRight } from "react-icons/fi";
+import { FiFileText, FiCreditCard, FiCheckCircle, FiLogOut, FiUser, FiClock, FiUpload, FiX, FiUserCheck, FiBell, FiMessageSquare, FiChevronRight, FiMenu } from "react-icons/fi";
 import documentsService from "../documents/documentsService";
 
 const DOC_TYPES = [
@@ -35,6 +35,8 @@ export default function DashboardPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showPaiement, setShowPaiement] = useState(false);
   const [showPreinscription, setShowPreinscription] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadFiles, setUploadFiles] = useState({});
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -142,14 +144,22 @@ export default function DashboardPage() {
     e.preventDefault();
     setTotalLoading(true);
     setTotalError("");
+    let preinscriptionOk = false;
     try {
-      await dispatch(initierPreinscription(paiementTotalForm));
-      await dispatch(initierPaiement(paiementTotalForm));
+      await dispatch(initierPreinscription(paiementTotalForm)).unwrap();
+      preinscriptionOk = true;
+      await dispatch(initierPaiement(paiementTotalForm)).unwrap();
       dispatch(fetchStatutPreinscription());
       dispatch(fetchStatutPaiement());
       setShowPaiementTotal(false);
     } catch {
-      setTotalError("Une erreur est survenue. Veuillez réessayer.");
+      if (preinscriptionOk) {
+        setTotalError("La pré-inscription a été initiée. Le paiement des frais de stage a échoué — payez-le séparément depuis l'onglet Paiement.");
+      } else {
+        setTotalError("Impossible d'initier la pré-inscription. Veuillez réessayer.");
+      }
+      dispatch(fetchStatutPreinscription());
+      dispatch(fetchStatutPaiement());
     } finally {
       setTotalLoading(false);
     }
@@ -207,16 +217,27 @@ export default function DashboardPage() {
 
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap');`}</style>
 
+      {/* SIDEBAR OVERLAY MOBILE */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* SIDEBAR */}
-      <div className="app-sidebar dashboard-sidebar" style={{
+      <div className={`app-sidebar dashboard-sidebar${sidebarOpen ? " sidebar-open" : ""}`} style={{
         position: "fixed", left: 0, top: 0, bottom: 0, width: "240px",
         background: "linear-gradient(180deg, #4c1d95 0%, #7c3aed 100%)",
-        display: "flex", flexDirection: "column", padding: "1.5rem 0", zIndex: 10
+        display: "flex", flexDirection: "column", padding: "1.5rem 0", zIndex: 100,
+        transition: "transform 0.25s ease",
       }}>
         <div style={{ padding: "0 1.5rem", marginBottom: "2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <img src="/images/logo.jpeg" alt="Logo" style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover" }} />
-            <span style={{ fontWeight: "700", fontSize: "15px", color: "#fff" }}>HR Skills SARL</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <img src="/images/logo.jpeg" alt="Logo" style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover" }} />
+              <span style={{ fontWeight: "700", fontSize: "15px", color: "#fff" }}>HR Skills SARL</span>
+            </div>
+            <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)", padding: "4px" }}>
+              <FiX size={20} />
+            </button>
           </div>
         </div>
 
@@ -228,7 +249,7 @@ export default function DashboardPage() {
             { id: "paiement", icon: <FiCreditCard size={18} />, label: "Paiement" },
             { id: "messages", icon: <FiMessageSquare size={18} />, label: "Messages", badge: messages.filter(m => !lus.includes(`msg-${m.id}`)).length },
           ].map((item) => (
-            <div key={item.id} onClick={() => setActiveMenu(item.id)} style={{
+            <div key={item.id} onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }} style={{
               display: "flex", alignItems: "center", gap: "10px",
               padding: "10px 12px", borderRadius: "8px", cursor: "pointer",
               background: activeMenu === item.id ? "rgba(255,255,255,0.2)" : "transparent",
@@ -271,6 +292,33 @@ export default function DashboardPage() {
 
       {/* CONTENU */}
       <div className="app-main dashboard-main" style={{ marginLeft: "240px", padding: "2rem" }}>
+
+        {/* MOBILE TOP BAR */}
+        <div className="dashboard-mobile-header" style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 97,
+          background: "#fff", borderBottom: "1px solid #ede9fe", height: "60px",
+          padding: "0 1rem", alignItems: "center", justifyContent: "space-between",
+          boxShadow: "0 2px 12px rgba(124,58,237,0.08)",
+        }}>
+          <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4c1d95", padding: "6px", borderRadius: "8px", display: "flex", alignItems: "center" }}>
+            <FiMenu size={22} />
+          </button>
+          <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "700", fontSize: "16px", color: "#4c1d95" }}>
+            {activeMenu === "dashboard" && "Tableau de bord"}
+            {activeMenu === "profil" && "Mon profil"}
+            {activeMenu === "documents" && "Mes documents"}
+            {activeMenu === "paiement" && "Paiement"}
+            {activeMenu === "messages" && "Messages"}
+          </span>
+          <button onClick={() => setShowNotifs(v => !v)} style={{ position: "relative", background: "none", border: "none", cursor: "pointer", color: "#4c1d95", padding: "6px", borderRadius: "8px", display: "flex", alignItems: "center" }}>
+            <FiBell size={20} />
+            {notifsNonLues > 0 && (
+              <span style={{ position: "absolute", top: "0", right: "0", background: "#ef4444", color: "#fff", borderRadius: "99px", fontSize: "9px", fontWeight: "700", padding: "1px 4px", minWidth: "14px", textAlign: "center" }}>
+                {notifsNonLues}
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* HEADER */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
@@ -652,10 +700,7 @@ export default function DashboardPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ fontSize: "11px", fontWeight: "500", padding: "3px 10px", borderRadius: "99px", background: statut.bg, color: statut.color }}>{statut.text}</span>
                     {docObj && docObj.statut === "en_attente" && (
-                      <button onClick={async () => {
-                        await documentsService.deleteDocument(docObj.id);
-                        dispatch(fetchDocuments());
-                      }} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}>
+                      <button onClick={() => setConfirmDeleteId(docObj.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}>
                         <FiX size={16} />
                       </button>
                     )}
@@ -1026,6 +1071,41 @@ export default function DashboardPage() {
                 {paiementLoading ? "Traitement en cours..." : "Confirmer — 40 000 XAF"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMATION SUPPRESSION */}
+      {confirmDeleteId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: "1rem" }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "380px", textAlign: "center" }}>
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem", color: "#ef4444" }}>
+              <FiX size={24} />
+            </div>
+            <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "18px", fontWeight: "700", color: "#1e293b", marginBottom: "0.5rem" }}>
+              Supprimer ce document ?
+            </h3>
+            <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "1.5rem", lineHeight: "1.6" }}>
+              Cette action est irréversible. Le document sera définitivement supprimé de votre dossier.
+            </p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                style={{ flex: 1, padding: "11px", borderRadius: "8px", background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#374151", fontSize: "14px", fontWeight: "600", cursor: "pointer" }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={async () => {
+                  await documentsService.deleteDocument(confirmDeleteId);
+                  dispatch(fetchDocuments());
+                  setConfirmDeleteId(null);
+                }}
+                style={{ flex: 1, padding: "11px", borderRadius: "8px", background: "#ef4444", border: "none", color: "#fff", fontSize: "14px", fontWeight: "600", cursor: "pointer" }}
+              >
+                Supprimer
+              </button>
+            </div>
           </div>
         </div>
       )}

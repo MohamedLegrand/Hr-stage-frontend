@@ -67,7 +67,7 @@
   transition: all 0.25s ease;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1024px) {
   .app-sidebar {
     position: relative !important;
     width: 100% !important;
@@ -94,10 +94,62 @@
   }
 }
 
+/* Overlay sidebar mobile */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+}
+
+.dashboard-mobile-header {
+  display: none;
+}
+
+.sidebar-close-btn {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
+  .app-sidebar {
+    transform: translateX(-100%) !important;
+    position: fixed !important;
+    width: 240px !important;
+    min-height: 100vh !important;
+    padding: 1.5rem 0 !important;
+    z-index: 100 !important;
+    transition: transform 0.25s ease !important;
+  }
+
+  .app-sidebar.sidebar-open {
+    transform: translateX(0) !important;
+  }
+
+  .dashboard-mobile-header {
+    display: flex !important;
+  }
+
+  .sidebar-close-btn {
+    display: flex !important;
+  }
+
+  .app-main {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    padding-top: 5rem !important;
+  }
+
+  .stats-grid,
+  .summary-grid,
+  .payment-grid,
+  .dossier-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .footer-contact {
     padding: 2rem 1rem;
   }
+
   .site-footer {
     padding: 1rem 1rem;
   }

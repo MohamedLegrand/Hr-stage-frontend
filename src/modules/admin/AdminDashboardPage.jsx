@@ -9,7 +9,7 @@ import { fetchMessagesEnvoyes, envoyerMessage } from "../messages/messagesSlice"
 import {
   FiUsers, FiFileText, FiCreditCard, FiCheckCircle, FiLogOut,
   FiBarChart2, FiEye, FiX, FiExternalLink, FiUserCheck, FiClock,
-  FiMessageSquare, FiSend, FiGlobe
+  FiMessageSquare, FiSend, FiGlobe, FiMenu, FiSearch
 } from "react-icons/fi";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -27,6 +27,8 @@ export default function AdminDashboardPage() {
   const [preinscriptions, setPreinscriptions] = useState([]);
   const [msgForm, setMsgForm] = useState({ destinataire: "all", sujet: "", contenu: "" });
   const [msgSucces, setMsgSucces] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     dispatch(fetchDashboard());
@@ -108,6 +110,11 @@ export default function AdminDashboardPage() {
     return { color: "#f59e0b", bg: "#fffbeb" };
   };
 
+  const filteredDossiers = dossiers.filter((d) => {
+    const q = searchQuery.toLowerCase();
+    return !q || d.prenom.toLowerCase().includes(q) || d.nom.toLowerCase().includes(q) || d.etablissement.toLowerCase().includes(q);
+  });
+
   const inputStyle = {
     width: "100%",
     padding: "10px 14px",
@@ -156,19 +163,30 @@ export default function AdminDashboardPage() {
 
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap');`}</style>
 
+      {/* SIDEBAR OVERLAY MOBILE */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* SIDEBAR */}
-      <div className="app-sidebar admin-sidebar" style={{
+      <div className={`app-sidebar admin-sidebar${sidebarOpen ? " sidebar-open" : ""}`} style={{
         position: "fixed", left: 0, top: 0, bottom: 0, width: "240px",
         background: "linear-gradient(180deg, #1e1b4b 0%, #4c1d95 100%)",
-        display: "flex", flexDirection: "column", padding: "1.5rem 0", zIndex: 10
+        display: "flex", flexDirection: "column", padding: "1.5rem 0", zIndex: 100,
+        transition: "transform 0.25s ease",
       }}>
         <div style={{ padding: "0 1.5rem", marginBottom: "2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <img src="/images/logo.jpeg" alt="Logo" style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover" }} />
-            <div>
-              <div style={{ fontWeight: "700", fontSize: "14px", color: "#fff" }}>HR Skills SARL</div>
-              <div style={{ fontSize: "11px", color: "#c4b5f7" }}>Administration</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <img src="/images/logo.jpeg" alt="Logo" style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover" }} />
+              <div>
+                <div style={{ fontWeight: "700", fontSize: "14px", color: "#fff" }}>HR Skills SARL</div>
+                <div style={{ fontSize: "11px", color: "#c4b5f7" }}>Administration</div>
+              </div>
             </div>
+            <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)", padding: "4px" }}>
+              <FiX size={20} />
+            </button>
           </div>
         </div>
 
@@ -182,7 +200,7 @@ export default function AdminDashboardPage() {
           ].map((item) => (
             <div
               key={item.id}
-              onClick={() => setActiveMenu(item.id)}
+              onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }}
               style={{
                 display: "flex", alignItems: "center", gap: "10px",
                 padding: "10px 12px", borderRadius: "8px", cursor: "pointer",
@@ -221,6 +239,22 @@ export default function AdminDashboardPage() {
 
       {/* CONTENU */}
       <div className="app-main admin-main" style={{ marginLeft: "240px", padding: "2rem" }}>
+
+        {/* MOBILE TOP BAR */}
+        <div className="dashboard-mobile-header" style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 97,
+          background: "#fff", borderBottom: "1px solid #ede9fe", height: "60px",
+          padding: "0 1rem", alignItems: "center", justifyContent: "space-between",
+          boxShadow: "0 2px 12px rgba(124,58,237,0.08)",
+        }}>
+          <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4c1d95", padding: "6px", borderRadius: "8px", display: "flex", alignItems: "center" }}>
+            <FiMenu size={22} />
+          </button>
+          <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "700", fontSize: "16px", color: "#4c1d95" }}>
+            {pageTitle}
+          </span>
+          <div style={{ width: "34px" }} />
+        </div>
 
         <div style={{ marginBottom: "2rem" }}>
           <h1 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "24px", fontWeight: "700", color: "#1e293b" }}>
@@ -304,10 +338,26 @@ export default function AdminDashboardPage() {
         {activeMenu === "dossiers" && (
           <div className="dossier-grid" style={{ display: "grid", gridTemplateColumns: selectedDossier ? "1fr 1.5fr" : "1fr", gap: "1.5rem" }}>
             <div style={{ background: "#fff", borderRadius: "12px", border: "1px solid #ede9fe", padding: "1.5rem" }}>
-              <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", fontWeight: "600", color: "#1e293b", marginBottom: "1.25rem" }}>
-                Liste des stagiaires ({dossiers.length})
-              </h3>
-              {dossiers.map((d) => (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", gap: "0.75rem", flexWrap: "wrap" }}>
+                <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "16px", fontWeight: "600", color: "#1e293b", margin: 0 }}>
+                  Stagiaires ({filteredDossiers.length}{searchQuery ? `/${dossiers.length}` : ""})
+                </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "6px 12px", flex: "1 1 160px", maxWidth: "220px" }}>
+                  <FiSearch size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
+                  <input
+                    placeholder="Rechercher..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    style={{ border: "none", outline: "none", background: "transparent", fontSize: "13px", color: "#1e293b", width: "100%" }}
+                  />
+                </div>
+              </div>
+              {filteredDossiers.length === 0 && searchQuery && (
+                <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
+                  Aucun stagiaire ne correspond à "{searchQuery}"
+                </div>
+              )}
+              {filteredDossiers.map((d) => (
                 <div
                   key={d.user_id}
                   onClick={() => handleVoirDossier(d.user_id)}
@@ -624,7 +674,12 @@ export default function AdminDashboardPage() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "480px", overflowY: "auto" }}>
-                  {messagesEnvoyes.map((msg) => (
+                  {messagesEnvoyes.map((msg) => {
+                    const destDossier = dossiers.find(d => String(d.user_id) === String(msg.destinataire));
+                    const destinataireLabel = msg.destinataire === "all"
+                      ? "Tous les stagiaires"
+                      : destDossier ? `${destDossier.prenom} ${destDossier.nom}` : `Stagiaire #${msg.destinataire}`;
+                    return (
                     <div key={msg.id} style={{
                       padding: "1rem 1.25rem", borderRadius: "10px",
                       border: "1px solid #f3f4f6", background: "#fafafa",
@@ -640,7 +695,7 @@ export default function AdminDashboardPage() {
                             color: msg.destinataire === "all" ? "#7c3aed" : "#0ea5e9",
                             border: `1px solid ${msg.destinataire === "all" ? "#c4b5fd" : "#bae6fd"}`,
                           }}>
-                            {msg.destinataire === "all" ? "Tous" : `Stagiaire #${msg.destinataire}`}
+                            {destinataireLabel}
                           </span>
                           <span style={{ fontSize: "11px", color: "#94a3b8" }}>
                             {new Date(msg.date).toLocaleDateString("fr-FR")}
@@ -651,7 +706,8 @@ export default function AdminDashboardPage() {
                         {msg.contenu.length > 120 ? `${msg.contenu.slice(0, 120)}…` : msg.contenu}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
