@@ -3,7 +3,7 @@ import Bureaux from "./components/Bureaux";
 import Equipe from "./components/Equipe";
 import Equipement from "./components/Equipement";
 import Header from "../../shared/components/Header";
-import Footer from "../../shared/components/Footer";
+import Footer from "@/shared/components/footer";
 
 export default function PhotothequePage() {
   return (

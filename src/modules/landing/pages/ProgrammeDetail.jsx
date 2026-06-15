@@ -4,7 +4,7 @@ import {
   FiLayers, FiCode, FiSmartphone, FiPenTool, FiServer, FiGitBranch,
 } from "react-icons/fi";
 import Header from "../../../shared/components/Header";
-import Footer from "../../../shared/components/Footer";
+import Footer from "@/shared/components/footer";
 import { getProgrammeById } from "../data/programmesData";
 
 const iconMap = {
