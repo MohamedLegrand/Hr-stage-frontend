@@ -28,43 +28,6 @@ export default function HeroSection() {
           0%, 100% { transform: translateY(0px); }
           50%       { transform: translateY(-10px); }
         }
-        @keyframes heroPulse {
-          0%, 100% { opacity: 0.7; transform: scale(1); }
-          50%       { opacity: 1;   transform: scale(1.35); }
-        }
-        .hero-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 4rem;
-          align-items: center;
-        }
-        .hero-right-col { display: flex; justify-content: center; align-items: center; }
-        .hero-cta-primary {
-          display: inline-flex; align-items: center; gap: 8px;
-          padding: 15px 30px; border-radius: 12px;
-          background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
-          color: #fff; text-decoration: none; font-size: 15px; font-weight: 600;
-          box-shadow: 0 8px 28px rgba(124,58,237,0.38);
-          transition: all 0.25s ease; white-space: nowrap;
-        }
-        .hero-cta-primary:hover { transform: translateY(-3px); box-shadow: 0 14px 36px rgba(124,58,237,0.48); }
-        .hero-cta-secondary {
-          display: inline-flex; align-items: center; gap: 8px;
-          padding: 15px 30px; border-radius: 12px;
-          border: 1.5px solid #c4b5fd; background: rgba(255,255,255,0.92);
-          color: #7c3aed; text-decoration: none; font-size: 15px; font-weight: 500;
-          transition: all 0.25s ease; white-space: nowrap;
-          backdrop-filter: blur(4px);
-        }
-        .hero-cta-secondary:hover { background: #f5f3ff; border-color: #7c3aed; transform: translateY(-2px); }
-        @media (max-width: 900px) {
-          .hero-grid { grid-template-columns: 1fr !important; gap: 2rem !important; }
-          .hero-right-col { display: none !important; }
-        }
-        @media (max-width: 480px) {
-          .hero-cta-row { flex-direction: column !important; }
-          .hero-cta-primary, .hero-cta-secondary { width: 100%; justify-content: center; }
-        }
       `}</style>
 
       {/* IMAGE DE FOND */}
@@ -105,8 +68,9 @@ export default function HeroSection() {
 
       {/* CONTENU */}
       <div
+        className="hero-content-pad"
         style={{
-          maxWidth: "1200px", margin: "0 auto", padding: "5rem 2rem 4rem",
+          maxWidth: "1200px", margin: "0 auto",
           width: "100%", position: "relative", zIndex: 3,
         }}
       >
@@ -186,8 +150,8 @@ export default function HeroSection() {
 
             {/* STATS */}
             <div
+              className="hero-stats-row"
               style={{
-                display: "flex", gap: "2.5rem", flexWrap: "wrap",
                 paddingTop: "2rem", borderTop: "1px solid rgba(124,58,237,0.12)",
               }}
             >

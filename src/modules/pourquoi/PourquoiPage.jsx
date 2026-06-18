@@ -90,6 +90,45 @@ export default function PourquoiPage() {
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&family=Inter:wght@400;500;600&display=swap');
         @keyframes fadeUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
         @keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+        .pourquoi-stats-bar {
+          display: inline-grid;
+          grid-template-columns: repeat(4, 1fr);
+          background: rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 16px;
+          overflow: hidden;
+          backdrop-filter: blur(10px);
+        }
+        .pourquoi-stat-border { border-right: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 640px) {
+          .pourquoi-stats-bar {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            width: 100%;
+            max-width: 360px;
+            margin: 0 auto;
+          }
+          .pourquoi-stat-border { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
+          .pourquoi-stat-item:nth-child(odd)  { border-right: 1px solid rgba(255,255,255,0.1); }
+          .pourquoi-stat-item:nth-last-child(-n+2) { border-bottom: none; }
+        }
+        .pourquoi-avantages-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 1.5rem;
+        }
+        @media (max-width: 480px) {
+          .pourquoi-avantages-grid { grid-template-columns: 1fr; }
+        }
+        .pourquoi-checklist-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 12px;
+          text-align: left;
+        }
+        @media (max-width: 480px) {
+          .pourquoi-checklist-grid { grid-template-columns: 1fr; }
+        }
       `}</style>
 
       <Header />
@@ -98,16 +137,32 @@ export default function PourquoiPage() {
       <section
         style={{
           paddingTop: "calc(70px + 5rem)", paddingBottom: "5rem",
-          background: "linear-gradient(160deg, #0f0b2a 0%, #3b0764 50%, #4c1d95 100%)",
           position: "relative", overflow: "hidden",
           animation: "fadeUp 0.7s ease both",
         }}
       >
+        {/* Image de fond */}
+        <div
+          style={{
+            position: "absolute", inset: 0,
+            backgroundImage: "url('/images/pourquoi.jpg')",
+            backgroundSize: "cover", backgroundPosition: "center",
+            zIndex: 0,
+          }}
+        />
+        {/* Overlay sombre */}
+        <div
+          style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(160deg, rgba(15,11,42,0.88) 0%, rgba(59,7,100,0.83) 50%, rgba(76,29,149,0.80) 100%)",
+            zIndex: 1,
+          }}
+        />
         {/* Décos bg */}
-        <div style={{ position: "absolute", width: "600px", height: "600px", borderRadius: "50%", background: "rgba(124,58,237,0.15)", top: "-200px", right: "-100px", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", width: "400px", height: "400px", borderRadius: "50%", background: "rgba(167,139,250,0.08)", bottom: "-100px", left: "-80px", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", width: "600px", height: "600px", borderRadius: "50%", background: "rgba(124,58,237,0.12)", top: "-200px", right: "-100px", pointerEvents: "none", zIndex: 2 }} />
+        <div style={{ position: "absolute", width: "400px", height: "400px", borderRadius: "50%", background: "rgba(167,139,250,0.07)", bottom: "-100px", left: "-80px", pointerEvents: "none", zIndex: 2 }} />
 
-        <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 2rem", textAlign: "center", position: "relative", zIndex: 2 }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 2rem", textAlign: "center", position: "relative", zIndex: 3 }}>
           <div
             style={{
               display: "inline-flex", alignItems: "center", gap: "7px",
@@ -150,26 +205,12 @@ export default function PourquoiPage() {
           </p>
 
           {/* Stats */}
-          <div
-            style={{
-              display: "inline-grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "0",
-              background: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: "16px",
-              overflow: "hidden",
-              backdropFilter: "blur(10px)",
-            }}
-          >
+          <div className="pourquoi-stats-bar">
             {STATS.map((s, i) => (
               <div
                 key={i}
-                style={{
-                  padding: "1.25rem 2rem",
-                  borderRight: i < STATS.length - 1 ? "1px solid rgba(255,255,255,0.1)" : "none",
-                  textAlign: "center",
-                }}
+                className={`pourquoi-stat-item${i < STATS.length - 1 ? " pourquoi-stat-border" : ""}`}
+                style={{ padding: "1.25rem 2rem", textAlign: "center" }}
               >
                 <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "26px", fontWeight: "800", color: "#fff", lineHeight: "1" }}>
                   {s.value}
@@ -200,13 +241,7 @@ export default function PourquoiPage() {
           </h2>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: "1.5rem",
-          }}
-        >
+        <div className="pourquoi-avantages-grid">
           {AVANTAGES.map((av, i) => (
             <div
               key={i}
@@ -278,7 +313,7 @@ export default function PourquoiPage() {
             Tout ce dont vous avez besoin pour réussir votre stage et préparer votre avenir professionnel.
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px", textAlign: "left" }}>
+          <div className="pourquoi-checklist-grid">
             {[
               "Fibre optique haut débit sans coupure",
               "Équipe d'experts toujours disponible",

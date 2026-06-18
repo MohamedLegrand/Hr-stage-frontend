@@ -160,33 +160,54 @@ export default function Header() {
           style={{
             position: "fixed", top: "70px", left: 0, right: 0, zIndex: 99,
             background: "#fff", borderBottom: "1px solid #ede9fe",
-            padding: "1.5rem 1.5rem",
-            display: "flex", flexDirection: "column", gap: "1.1rem",
-            boxShadow: "0 12px 32px rgba(0,0,0,0.08)",
+            padding: "1rem 1.25rem 1.5rem",
+            display: "flex", flexDirection: "column", gap: "2px",
+            boxShadow: "0 16px 40px rgba(0,0,0,0.09)",
             fontFamily: "'Inter', sans-serif",
           }}
         >
           {[
-            { label: "Accueil",  href: anchorHref("hero"), onClick: (e) => handleAnchorClick(e, "hero"), isLink: false },
-            { label: "Tarifs",   href: anchorHref("tarifs"), onClick: (e) => handleAnchorClick(e, "tarifs"), isLink: false },
+            { label: "Accueil",              href: anchorHref("hero"),   onClick: (e) => handleAnchorClick(e, "hero"),   active: isHome && !isPourquoi && !isContact && !isPhototheque },
+            { label: "Tarifs",               href: anchorHref("tarifs"), onClick: (e) => handleAnchorClick(e, "tarifs"), active: false },
           ].map((item) => (
             <a
               key={item.label} href={item.href} onClick={item.onClick}
-              style={{ color: "#374151", textDecoration: "none", fontSize: "15px", fontWeight: "500", padding: "6px 0" }}
+              style={{
+                color: item.active ? "#7c3aed" : "#374151",
+                background: item.active ? "#f5f3ff" : "transparent",
+                textDecoration: "none", fontSize: "14px",
+                fontWeight: item.active ? "600" : "500",
+                padding: "10px 12px", borderRadius: "8px",
+                display: "flex", alignItems: "center", gap: "8px",
+                transition: "all 0.15s ease",
+              }}
             >
+              {item.active && <span style={{ width: "3px", height: "14px", borderRadius: "99px", background: "#7c3aed", flexShrink: 0 }} />}
               {item.label}
             </a>
           ))}
-          <Link to="/pourquoi" onClick={() => setOpen(false)} style={{ color: "#374151", textDecoration: "none", fontSize: "15px", fontWeight: "500", padding: "6px 0" }}>
-            Pourquoi HR Skills SARL ?
-          </Link>
-          <Link to="/phototheque" onClick={() => setOpen(false)} style={{ color: "#374151", textDecoration: "none", fontSize: "15px", fontWeight: "500", padding: "6px 0" }}>
-            Photothèque
-          </Link>
-          <Link to="/contact" onClick={() => setOpen(false)} style={{ color: "#374151", textDecoration: "none", fontSize: "15px", fontWeight: "500", padding: "6px 0" }}>
-            Contact
-          </Link>
-          <div style={{ display: "flex", gap: "10px", paddingTop: "1rem", borderTop: "1px solid #f3f4f6" }}>
+          {[
+            { label: "Pourquoi HR Skills SARL ?", to: "/pourquoi",    active: isPourquoi },
+            { label: "Photothèque",               to: "/phototheque", active: isPhototheque },
+            { label: "Contact",                   to: "/contact",     active: isContact },
+          ].map((item) => (
+            <Link
+              key={item.to} to={item.to} onClick={() => setOpen(false)}
+              style={{
+                color: item.active ? "#7c3aed" : "#374151",
+                background: item.active ? "#f5f3ff" : "transparent",
+                textDecoration: "none", fontSize: "14px",
+                fontWeight: item.active ? "600" : "500",
+                padding: "10px 12px", borderRadius: "8px",
+                display: "flex", alignItems: "center", gap: "8px",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {item.active && <span style={{ width: "3px", height: "14px", borderRadius: "99px", background: "#7c3aed", flexShrink: 0 }} />}
+              {item.label}
+            </Link>
+          ))}
+          <div style={{ display: "flex", gap: "10px", paddingTop: "1rem", marginTop: "0.5rem", borderTop: "1px solid #f3f4f6" }}>
             <AuthButtons mobile onClick={() => setOpen(false)} />
           </div>
         </div>

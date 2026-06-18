@@ -83,6 +83,31 @@ export default function ContactPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
         input::placeholder, textarea::placeholder { color: #9ca3af; }
         select { appearance: none; -webkit-appearance: none; }
+        .contact-form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 3.5rem;
+          margin-bottom: 5rem;
+          align-items: flex-start;
+        }
+        @media (max-width: 900px) {
+          .contact-form-grid {
+            grid-template-columns: 1fr;
+            gap: 2.5rem;
+          }
+        }
+        .contact-info-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.25rem;
+          margin-bottom: 4rem;
+        }
+        @media (max-width: 768px) {
+          .contact-info-grid { grid-template-columns: 1fr; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+          .contact-info-grid { grid-template-columns: repeat(2, 1fr); }
+        }
       `}</style>
 
       <Header />
@@ -92,42 +117,65 @@ export default function ContactPage() {
         style={{
           paddingTop: "calc(70px + 5rem)", paddingBottom: "5rem",
           paddingLeft: "2rem", paddingRight: "2rem",
-          background: "linear-gradient(160deg, #faf5ff 0%, #ede9fe 60%, #faf5ff 100%)",
+          position: "relative", overflow: "hidden",
           borderBottom: "1px solid #ede9fe",
           textAlign: "center",
           animation: "fadeUp 0.7s ease both",
         }}
       >
+        {/* Image de fond */}
         <div
           style={{
-            display: "inline-flex", alignItems: "center", gap: "7px",
-            background: "#ede9fe", borderRadius: "99px",
-            padding: "5px 16px", marginBottom: "1.5rem",
-            fontSize: "12px", fontWeight: "700", color: "#7c3aed",
-            textTransform: "uppercase", letterSpacing: "0.08em",
+            position: "absolute", inset: 0,
+            backgroundImage: "url('/images/contact.jpx')",
+            backgroundSize: "cover", backgroundPosition: "center",
+            zIndex: 0,
           }}
-        >
-          <FiMessageCircle size={13} /> Nous contacter
-        </div>
-        <h1
+        />
+        {/* Overlay dégradé clair */}
+        <div
           style={{
-            fontFamily: "'Poppins', sans-serif",
-            fontSize: "clamp(2rem, 4vw, 3rem)",
-            fontWeight: "800", color: "#0f172a",
-            margin: "0 0 1rem", letterSpacing: "-0.02em", lineHeight: "1.15",
+            position: "absolute", inset: 0,
+            background: "linear-gradient(160deg, rgba(250,245,255,0.93) 0%, rgba(237,233,254,0.88) 55%, rgba(250,245,255,0.82) 100%)",
+            zIndex: 1,
           }}
-        >
-          On est là pour vous répondre
-        </h1>
-        <p style={{ color: "#64748b", fontSize: "16px", maxWidth: "520px", margin: "0 auto", lineHeight: "1.8" }}>
-          Vous avez une question, un projet de stage ou besoin d'informations ?
-          Notre équipe à Yaoundé vous répond rapidement.
-        </p>
+        />
+
+        {/* Contenu */}
+        <div style={{ position: "relative", zIndex: 2 }}>
+          <div
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "7px",
+              background: "rgba(237,233,254,0.85)", borderRadius: "99px",
+              padding: "5px 16px", marginBottom: "1.5rem",
+              fontSize: "12px", fontWeight: "700", color: "#7c3aed",
+              textTransform: "uppercase", letterSpacing: "0.08em",
+              backdropFilter: "blur(6px)",
+              border: "1px solid rgba(196,181,253,0.4)",
+            }}
+          >
+            <FiMessageCircle size={13} /> Nous contacter
+          </div>
+          <h1
+            style={{
+              fontFamily: "'Poppins', sans-serif",
+              fontSize: "clamp(2rem, 4vw, 3rem)",
+              fontWeight: "800", color: "#0f172a",
+              margin: "0 0 1rem", letterSpacing: "-0.02em", lineHeight: "1.15",
+            }}
+          >
+            On est là pour vous répondre
+          </h1>
+          <p style={{ color: "#475569", fontSize: "16px", maxWidth: "520px", margin: "0 auto", lineHeight: "1.8" }}>
+            Vous avez une question, un projet de stage ou besoin d'informations ?
+            Notre équipe à Yaoundé vous répond rapidement.
+          </p>
+        </div>
       </section>
 
       {/* ── CARDS INFO ── */}
       <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "3.5rem 2rem 0" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem", marginBottom: "4rem" }}>
+        <div className="contact-info-grid">
           {infoCards.map((card) => (
             <div
               key={card.id}
@@ -173,7 +221,7 @@ export default function ContactPage() {
         </div>
 
         {/* ── FORMULAIRE + MAP ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3rem", marginBottom: "5rem", alignItems: "flex-start" }}>
+        <div className="contact-form-grid">
 
           {/* FORMULAIRE */}
           <div>
@@ -222,7 +270,7 @@ export default function ContactPage() {
                   <div style={{ position: "relative" }}>
                     <FiUser size={15} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: focused === "nom" ? "#7c3aed" : "#9ca3af", transition: "color 0.2s", pointerEvents: "none" }} />
                     <input
-                      required placeholder="Jean Dupont"
+                      required placeholder="Mohamed Legrand"
                       value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })}
                       style={inp("nom")}
                       onFocus={() => setFocused("nom")} onBlur={() => setFocused(null)}
@@ -236,7 +284,7 @@ export default function ContactPage() {
                   <div style={{ position: "relative" }}>
                     <FiMail size={15} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: focused === "email" ? "#7c3aed" : "#9ca3af", transition: "color 0.2s", pointerEvents: "none" }} />
                     <input
-                      required type="email" placeholder="exemple@email.com"
+                      required type="email" placeholder="mohamed@gmail.com"
                       value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                       style={inp("email")}
                       onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}

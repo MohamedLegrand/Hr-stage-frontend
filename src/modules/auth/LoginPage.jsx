@@ -118,7 +118,7 @@ export default function LoginPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              Bon retour 👋
+              Bon retour 
             </h1>
             <p style={{ color: "#64748b", fontSize: "14px" }}>
               Connectez-vous pour accéder à votre espace stagiaire

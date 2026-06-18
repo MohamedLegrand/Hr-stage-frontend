@@ -37,7 +37,6 @@ function SectionLabel({ children }) {
 // ── Composant principal ───────────────────────────────────────────────────────
 
 export default function LandingPage() {
-  const [hoveredStep, setHoveredStep] = useState(null);
   const [hoveredFeat, setHoveredFeat] = useState(null);
 
   const programmes = [
@@ -67,13 +66,6 @@ export default function LandingPage() {
     },
   ];
 
-  const steps = [
-    { num: "01", color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd", title: "Créez votre compte",       desc: "Inscrivez-vous en 2 minutes avec vos informations personnelles et académiques." },
-    { num: "02", color: "#0ea5e9", bg: "#f0f9ff", border: "#bae6fd", title: "Payez la pré-inscription",  desc: "Réglez 5 000 XAF via Mobile Money pour activer votre espace et votre dossier." },
-    { num: "03", color: "#10b981", bg: "#f0fdf4", border: "#bbf7d0", title: "Déposez vos documents",     desc: "Uploadez vos 4 pièces requises et réglez les 40 000 XAF de frais de stage." },
-    { num: "04", color: "#f59e0b", bg: "#fffbeb", border: "#fde68a", title: "Recevez votre confirmation", desc: "L'équipe HR Skills valide votre dossier. Vous êtes notifié en temps réel." },
-  ];
-
   const container = { maxWidth: "1200px", margin: "0 auto", padding: "0 2rem" };
 
   return (
@@ -81,19 +73,6 @@ export default function LandingPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap');
         @keyframes fadeInCard { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .prog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-        .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-        @media (max-width: 1024px) {
-          .prog-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        @media (max-width: 768px) {
-          .prog-grid { grid-template-columns: 1fr !important; }
-          .feat-grid { grid-template-columns: 1fr !important; }
-          .price-grid { grid-template-columns: 1fr !important; }
-          .values-grid { grid-template-columns: 1fr !important; }
-          .stats-row { flex-direction: column !important; gap: 1.5rem !important; }
-        }
       `}</style>
 
       <Header />
@@ -116,9 +95,9 @@ export default function LandingPage() {
       </div>
 
       {/* ── À PROPOS ── */}
-      <section id="apropos" style={{ padding: "7rem 0" }}>
+      <section id="apropos" style={{ padding: "clamp(3.5rem, 7vw, 7rem) 0" }}>
         <div style={container}>
-          <div style={{ textAlign: "center", marginBottom: "4.5rem" }}>
+          <div style={{ textAlign: "center", marginBottom: "clamp(2.25rem, 4.5vw, 4.5rem)" }}>
             <SectionLabel>À propos de HR Skills SARL</SectionLabel>
             <h2
               style={{
@@ -143,7 +122,7 @@ export default function LandingPage() {
           {/* VALEURS */}
           <div
             className="values-grid"
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem", marginBottom: "5rem" }}
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.5rem", marginBottom: "clamp(2.5rem, 5vw, 5rem)" }}
           >
             {[
               { icon: <FiAward size={22} />,  color: "#7c3aed", bg: "linear-gradient(135deg, #f5f3ff, #ede9fe)", border: "#ede9fe", title: "Formateurs experts",     desc: "Chacun spécialisé et expérimenté dans son domaine d'enseignement professionnel." },
@@ -221,14 +200,14 @@ export default function LandingPage() {
       <section
         id="fonctionnalites"
         style={{
-          padding: "7rem 0",
+          padding: "clamp(3.5rem, 7vw, 7rem) 0",
           background: "#faf5ff",
           borderTop: "1px solid #ede9fe",
           borderBottom: "1px solid #ede9fe",
         }}
       >
         <div style={container}>
-          <div style={{ textAlign: "center", marginBottom: "4.5rem" }}>
+          <div style={{ textAlign: "center", marginBottom: "clamp(2.25rem, 4.5vw, 4.5rem)" }}>
             <SectionLabel>Fonctionnalités</SectionLabel>
             <h2
               style={{
@@ -288,7 +267,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── TARIFS ── */}
-      <section id="tarifs" style={{ padding: "7rem 0" }}>
+      <section id="tarifs" style={{ padding: "clamp(3.5rem, 7vw, 7rem) 0" }}>
         <div style={container}>
           <div style={{ textAlign: "center", marginBottom: "4rem" }}>
             <SectionLabel>Tarifs</SectionLabel>
@@ -426,85 +405,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── COMMENT ÇA MARCHE ── */}
-      <section
-        id="etapes"
-        style={{
-          padding: "7rem 0",
-          background: "#faf5ff",
-          borderTop: "1px solid #ede9fe", borderBottom: "1px solid #ede9fe",
-        }}
-      >
-        <div style={container}>
-          <div style={{ textAlign: "center", marginBottom: "4.5rem" }}>
-            <SectionLabel>Comment ça marche</SectionLabel>
-            <h2
-              style={{
-                fontFamily: "'Poppins', sans-serif",
-                fontSize: "clamp(1.9rem, 3vw, 2.6rem)", fontWeight: "800",
-                color: "#0f172a", letterSpacing: "-0.02em",
-              }}
-            >
-              4 étapes, 100 % en ligne
-            </h2>
-          </div>
-
-          <div style={{ maxWidth: "760px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {steps.map((step, idx) => (
-              <div
-                key={step.num}
-                style={{
-                  display: "flex", gap: "1.5rem", alignItems: "flex-start",
-                  padding: "1.75rem 2rem",
-                  background: hoveredStep === idx ? "#fff" : "rgba(255,255,255,0.7)",
-                  border: hoveredStep === idx ? `1px solid ${step.border}` : "1px solid #ede9fe",
-                  borderRadius: "14px",
-                  transition: "all 0.25s ease",
-                  boxShadow: hoveredStep === idx ? `0 8px 28px ${step.color}14` : "none",
-                  cursor: "default",
-                }}
-                onMouseEnter={() => setHoveredStep(idx)}
-                onMouseLeave={() => setHoveredStep(null)}
-              >
-                <div
-                  style={{
-                    width: "52px", height: "52px", borderRadius: "14px",
-                    background: step.bg, border: `1px solid ${step.border}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: "'Poppins', sans-serif", fontSize: "17px", fontWeight: "800",
-                    color: step.color, flexShrink: 0,
-                    transition: "transform 0.25s ease",
-                    transform: hoveredStep === idx ? "scale(1.08)" : "scale(1)",
-                  }}
-                >
-                  {step.num}
-                </div>
-                <div>
-                  <h3
-                    style={{
-                      fontFamily: "'Poppins', sans-serif", fontSize: "17px", fontWeight: "700",
-                      color: "#1e293b", marginBottom: "0.4rem",
-                    }}
-                  >
-                    {step.title}
-                  </h3>
-                  <p style={{ fontSize: "14px", color: "#64748b", lineHeight: "1.75", margin: 0 }}>
-                    {step.desc}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA FINAL ── */}
-      <section style={{ padding: "5rem 2rem", background: "#faf5ff", borderTop: "1px solid #ede9fe" }}>
+      <section style={{ padding: "clamp(2.5rem, 5vw, 5rem) clamp(1.25rem, 4vw, 2rem)", background: "#faf5ff", borderTop: "1px solid #ede9fe" }}>
         <div
           style={{
             maxWidth: "720px", margin: "0 auto",
             background: "linear-gradient(145deg, #4c1d95 0%, #7c3aed 100%)",
-            borderRadius: "24px", padding: "4rem 3rem",
+            borderRadius: "24px", padding: "clamp(2rem, 4vw, 4rem) clamp(1.5rem, 4vw, 3rem)",
             textAlign: "center", position: "relative", overflow: "hidden",
             boxShadow: "0 24px 64px rgba(124,58,237,0.32)",
           }}
@@ -538,7 +445,7 @@ export default function LandingPage() {
           <p style={{ color: "#ddd6fe", fontSize: "16px", lineHeight: "1.8", marginBottom: "2.5rem" }}>
             Rejoignez les étudiants encadrés par HR Skills SARL. Déposez votre dossier en ligne en quelques minutes.
           </p>
-          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+          <div className="lp-cta-btns">
             <Link
               to="/register"
               style={{

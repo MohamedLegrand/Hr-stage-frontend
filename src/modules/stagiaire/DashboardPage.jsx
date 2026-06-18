@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../auth/authSlice";
+import OnboardingTour from "../onboarding/OnboardingTour";
 import { fetchProfil } from "./stagiaireSlice";
 import { fetchDocuments } from "../documents/documentsSlice";
 import { fetchStatutPaiement, initierPaiement } from "../paiement/paiementSlice";
@@ -277,6 +278,64 @@ export default function DashboardPage() {
 
   const msgNonLus = messages.filter((m) => !lus.includes(`msg-${m.id}`)).length;
 
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    if (!localStorage.getItem("hrskills_tour_stagiaire")) setShowOnboarding(true);
+  }, []);
+
+  const onboardingSteps = useMemo(() => [
+    {
+      target: null,
+      icon: "welcome",
+      title: "Bienvenue dans votre espace stagiaire !",
+      desc: "Tout est prêt pour vous. En quelques étapes, nous allons vous guider à travers votre espace personnel HR Skills SARL.",
+    },
+    {
+      target: "ob-sidebar",
+      position: "right",
+      title: "Navigation principale",
+      desc: "Ce menu latéral vous donne accès à toutes les sections : tableau de bord, documents, paiements, messages et profil.",
+    },
+    {
+      target: "ob-stats",
+      position: "bottom",
+      title: "Votre tableau de bord",
+      desc: "Suivez en temps réel l'avancement de votre dossier : documents déposés, paiements et statut global de votre stage.",
+      action: () => setActiveMenu("dashboard"),
+    },
+    {
+      target: "ob-nav-documents",
+      position: "right",
+      title: "Déposez vos documents",
+      desc: "4 documents obligatoires : lettre de demande de stage, CV, certificat de scolarité et CNI/récépissé. Déposez-les ici pour valider votre dossier.",
+    },
+    {
+      target: "ob-nav-paiement",
+      position: "right",
+      title: "Gérez vos paiements",
+      desc: "Payez votre pré-inscription (5 000 XAF) puis vos frais de stage (40 000 XAF) directement via MTN Money ou Orange Money.",
+    },
+    {
+      target: "ob-nav-messages",
+      position: "right",
+      title: "Vos messages",
+      desc: "Recevez ici les communications et annonces de l'équipe HR Skills SARL. Les notifications non lues apparaissent en rouge.",
+    },
+    {
+      target: "ob-nav-profil",
+      position: "right",
+      title: "Votre profil",
+      desc: "Consultez et mettez à jour vos informations personnelles depuis cette section.",
+    },
+    {
+      target: null,
+      icon: "done",
+      title: "Vous êtes prêt ! 🎉",
+      desc: "Votre espace est configuré. Commencez par déposer vos 4 documents pour valider votre dossier. Bonne chance dans votre stage !",
+      action: () => setActiveMenu("dashboard"),
+    },
+  ], [setActiveMenu]);
+
   return (
     <div style={{ minHeight: "100vh", background: "#f8f7ff", fontFamily: "'Inter', sans-serif" }}>
       <style>{`
@@ -289,6 +348,7 @@ export default function DashboardPage() {
 
       {/* ── SIDEBAR ── */}
       <aside
+        id="ob-sidebar"
         className={`app-sidebar${sidebarOpen ? " sidebar-open" : ""}`}
         style={{
           position: "fixed", left: 0, top: 0, bottom: 0, width: "248px",
@@ -339,6 +399,7 @@ export default function DashboardPage() {
             return (
               <div
                 key={item.id}
+                id={`ob-nav-${item.id}`}
                 onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -569,7 +630,7 @@ export default function DashboardPage() {
         {activeMenu === "dashboard" && (
           <>
             {/* STATS */}
-            <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(185px, 1fr))", gap: "1rem", marginBottom: "1.75rem" }}>
+            <div id="ob-stats" className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(185px, 1fr))", gap: "1rem", marginBottom: "1.75rem" }}>
               <StatCard icon={<FiFileText size={21} />} label="Documents soumis" value={`${documents.length} / 4`} color="#7c3aed" bg="#f5f3ff" />
               <StatCard icon={<FiCheckCircle size={21} />} label="Documents validés" value={`${docsValides} / 4`} color="#10b981" bg="#f0fdf4" />
               <StatCard
@@ -1197,6 +1258,14 @@ function PreinscriptionCard({ preinscription, onPayer }) {
         <button onClick={onPayer} style={{ width: "100%", padding: "10px", borderRadius: "9px", background: "linear-gradient(135deg, #7c3aed, #a78bfa)", color: "#fff", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}>
           Payer — 5 000 XAF
         </button>
+      )}
+
+      {showOnboarding && (
+        <OnboardingTour
+          steps={onboardingSteps}
+          storageKey="hrskills_tour_stagiaire"
+          onComplete={() => setShowOnboarding(false)}
+        />
       )}
     </div>
   );

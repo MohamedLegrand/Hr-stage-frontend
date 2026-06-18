@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../auth/authSlice";
+import OnboardingTour from "../onboarding/OnboardingTour";
 import { fetchDashboard, fetchDossiers } from "./adminSlice";
 import adminService from "./adminService";
 import preinscriptionService from "../preinscription/preinscriptionService";
@@ -154,6 +155,64 @@ export default function AdminDashboardPage() {
     return !q || d.prenom.toLowerCase().includes(q) || d.nom.toLowerCase().includes(q) || d.etablissement?.toLowerCase().includes(q);
   });
 
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    if (!localStorage.getItem("hrskills_tour_admin")) setShowOnboarding(true);
+  }, []);
+
+  const onboardingSteps = useMemo(() => [
+    {
+      target: null,
+      icon: "welcome",
+      title: "Bienvenue, administrateur !",
+      desc: "Voici votre tableau de bord de gestion. Nous allons vous présenter les principales fonctionnalités en quelques étapes.",
+    },
+    {
+      target: "ob-admin-sidebar",
+      position: "right",
+      title: "Navigation admin",
+      desc: "Ce menu vous donne accès à toutes les sections de gestion : dossiers stagiaires, préinscriptions, paiements et messagerie.",
+    },
+    {
+      target: "ob-admin-stats",
+      position: "bottom",
+      title: "Statistiques globales",
+      desc: "Vue d'ensemble en temps réel : nombre de stagiaires, dossiers en attente, validations de paiements et de préinscriptions.",
+      action: () => setActiveMenu("dashboard"),
+    },
+    {
+      target: "ob-admin-nav-dossiers",
+      position: "right",
+      title: "Gestion des dossiers",
+      desc: "Consultez, validez ou rejetez les documents de chaque stagiaire. Un dossier complet comporte 4 documents validés.",
+    },
+    {
+      target: "ob-admin-nav-preinscriptions",
+      position: "right",
+      title: "Préinscriptions",
+      desc: "Validez ou rejetez les demandes de pré-inscription. Une validation débloque l'accès au paiement des frais de stage.",
+    },
+    {
+      target: "ob-admin-nav-paiements",
+      position: "right",
+      title: "Validation des paiements",
+      desc: "Confirmez les paiements Mobile Money reçus. Chaque paiement indique le montant, l'opérateur et le numéro de téléphone.",
+    },
+    {
+      target: "ob-admin-nav-messages",
+      position: "right",
+      title: "Messagerie",
+      desc: "Envoyez des annonces et communications à l'ensemble des stagiaires ou à des destinataires ciblés.",
+    },
+    {
+      target: null,
+      icon: "done",
+      title: "Tableau de bord prêt !",
+      desc: "Vous maîtrisez maintenant l'essentiel. Commencez par vérifier les dossiers en attente de validation.",
+      action: () => setActiveMenu("dashboard"),
+    },
+  ], [setActiveMenu]);
+
   const pageTitle = {
     dashboard: "Tableau de bord",
     dossiers: "Gestion des dossiers",
@@ -183,6 +242,7 @@ export default function AdminDashboardPage() {
 
       {/* ── SIDEBAR ── */}
       <aside
+        id="ob-admin-sidebar"
         className={`app-sidebar${sidebarOpen ? " sidebar-open" : ""}`}
         style={{
           position: "fixed", left: 0, top: 0, bottom: 0, width: "248px",
@@ -213,6 +273,7 @@ export default function AdminDashboardPage() {
             return (
               <div
                 key={item.id}
+                id={`ob-admin-nav-${item.id}`}
                 onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }}
                 style={{
                   display: "flex", alignItems: "center", gap: "10px",
@@ -284,7 +345,7 @@ export default function AdminDashboardPage() {
         {/* ══ DASHBOARD ══ */}
         {activeMenu === "dashboard" && (
           <>
-            <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(185px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+            <div id="ob-admin-stats" className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(185px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
               {dashboard ? [
                 { icon: <FiUsers size={21} />,       label: "Total stagiaires",            value: dashboard.total_stagiaires,                   color: "#7c3aed", bg: "#f5f3ff" },
                 { icon: <FiClock size={21} />,        label: "Dossiers en attente",         value: dashboard.dossiers_en_attente,                 color: "#f59e0b", bg: "#fffbeb" },
@@ -308,7 +369,7 @@ export default function AdminDashboardPage() {
                   Voir tous →
                 </button>
               </div>
-              <div style={{ overflowX: "auto" }}>
+              <div className="adm-table-wrap" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <TableHeaderRow cols={["Stagiaire", "Établissement", "Documents", "Pré-inscription", "Paiement", "Action"]} />
@@ -567,7 +628,7 @@ export default function AdminDashboardPage() {
                 <Badge text={`⏳ ${preinscriptions.filter((p) => p.statut === "en_attente").length} en attente`} color="#92400e" bg="#fffbeb" border="#fde68a" />
               </div>
             </div>
-            <div style={{ overflowX: "auto" }}>
+            <div className="adm-table-wrap" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <TableHeaderRow cols={["Référence", "Montant", "Opérateur", "Téléphone", "Statut", "Date", "Actions"]} />
@@ -629,7 +690,7 @@ export default function AdminDashboardPage() {
                 <Badge text={`⏳ ${paiements.filter((p) => p.statut === "en_attente").length} en attente`} color="#92400e" bg="#fffbeb" border="#fde68a" />
               </div>
             </div>
-            <div style={{ overflowX: "auto" }}>
+            <div className="adm-table-wrap" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <TableHeaderRow cols={["Référence", "Montant", "Opérateur", "Téléphone", "Statut", "Action"]} />
@@ -792,6 +853,14 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </main>
+
+      {showOnboarding && (
+        <OnboardingTour
+          steps={onboardingSteps}
+          storageKey="hrskills_tour_admin"
+          onComplete={() => setShowOnboarding(false)}
+        />
+      )}
     </div>
   );
 }
