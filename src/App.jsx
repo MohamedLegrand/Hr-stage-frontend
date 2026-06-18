@@ -7,6 +7,8 @@ import DashboardPage from "./modules/stagiaire/DashboardPage";
 import AdminDashboardPage from "./modules/admin/AdminDashboardPage";
 import PhotothequePage from "./modules/phototheque/Phototheque";
 import ProgrammeDetail from "./modules/landing/pages/ProgrammeDetail";
+import ContactPage from "./modules/contact/ContactPage";
+import PourquoiPage from "./modules/pourquoi/PourquoiPage";
 import ProtectedRoute from "./shared/components/ProtectedRoute";
 import AdminRoute from "./shared/components/AdminRoute";
 
@@ -31,6 +33,10 @@ export default function App() {
         
         {/* Page de détail des programmes */}
         <Route path="/programme/:id" element={<ProgrammeDetail />} />
+
+        {/* Pages publiques additionnelles */}
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/pourquoi" element={<PourquoiPage />} />
         
         {/* Pages protégées - Stagiaire */}
         <Route path="/dashboard" element={
