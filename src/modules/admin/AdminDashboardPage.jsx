@@ -131,25 +131,6 @@ export default function AdminDashboardPage() {
     handleVoirDossier(selectedUserId); dispatch(fetchDashboard()); dispatch(fetchDossiers());
   };
 
-  const handleValiderPaiement = async (paiementId) => {
-    await adminService.validerPaiement(paiementId);
-    adminService.getPaiements().then(setPaiements);
-    dispatch(fetchDashboard()); dispatch(fetchDossiers());
-    if (selectedUserId) handleVoirDossier(selectedUserId);
-  };
-
-  const handleValiderPreinscription = async (id) => {
-    await preinscriptionService.validerPreinscription(id);
-    preinscriptionService.getListe().then(setPreinscriptions);
-    dispatch(fetchDashboard());
-  };
-
-  const handleRejeterPreinscription = async (id) => {
-    await preinscriptionService.rejeterPreinscription(id);
-    preinscriptionService.getListe().then(setPreinscriptions);
-    dispatch(fetchDashboard());
-  };
-
   const filteredDossiers = dossiers.filter((d) => {
     const q = searchQuery.toLowerCase();
     return !q || d.prenom.toLowerCase().includes(q) || d.nom.toLowerCase().includes(q) || d.etablissement?.toLowerCase().includes(q);
@@ -190,13 +171,13 @@ export default function AdminDashboardPage() {
       target: "ob-admin-nav-preinscriptions",
       position: "right",
       title: "Préinscriptions",
-      desc: "Validez ou rejetez les demandes de pré-inscription. Une validation débloque l'accès au paiement des frais de stage.",
+      desc: "Consultez les pré-inscriptions reçues et leur statut. La validation est automatique via HR-Skills Pay dès que le stagiaire confirme le paiement sur son téléphone.",
     },
     {
       target: "ob-admin-nav-paiements",
       position: "right",
-      title: "Validation des paiements",
-      desc: "Confirmez les paiements Mobile Money reçus. Chaque paiement indique le montant, l'opérateur et le numéro de téléphone.",
+      title: "Paiements reçus",
+      desc: "Suivez les paiements Mobile Money effectués par les stagiaires. Le statut est mis à jour automatiquement par HR-Skills Pay — aucune action manuelle requise.",
     },
     {
       target: "ob-admin-nav-messages",
@@ -591,17 +572,9 @@ export default function AdminDashboardPage() {
                           <StatusBadge statut={selectedDossier.paiement.statut} />
                         </div>
                         {selectedDossier.paiement.operateur && (
-                          <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "8px" }}>
+                          <div style={{ fontSize: "12px", color: "#64748b" }}>
                             {selectedDossier.paiement.operateur} · {selectedDossier.paiement.telephone}
                           </div>
-                        )}
-                        {selectedDossier.paiement.statut === "en_attente" && (
-                          <button
-                            onClick={() => handleValiderPaiement(selectedDossier.paiement.id)}
-                            style={{ width: "100%", padding: "10px", borderRadius: "9px", background: "linear-gradient(135deg, #065f46, #10b981)", border: "none", color: "#fff", fontSize: "13px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginTop: "4px" }}
-                          >
-                            <FiCheckCircle size={14} /> Valider le paiement
-                          </button>
                         )}
                       </div>
                     ) : (
@@ -631,12 +604,12 @@ export default function AdminDashboardPage() {
             <div className="adm-table-wrap" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <TableHeaderRow cols={["Référence", "Montant", "Opérateur", "Téléphone", "Statut", "Date", "Actions"]} />
+                  <TableHeaderRow cols={["Référence", "Montant", "Opérateur", "Téléphone", "Statut", "Date"]} />
                 </thead>
                 <tbody>
                   {preinscriptions.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
+                      <td colSpan={6} style={{ padding: "3rem", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
                         Aucune préinscription enregistrée
                       </td>
                     </tr>
@@ -649,26 +622,6 @@ export default function AdminDashboardPage() {
                       <td style={{ padding: "13px 14px" }}><StatusBadge statut={p.statut} /></td>
                       <td style={{ padding: "13px 14px", fontSize: "12px", color: "#94a3b8" }}>
                         {p.created_at ? new Date(p.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—"}
-                      </td>
-                      <td style={{ padding: "13px 14px" }}>
-                        {p.statut === "en_attente" && (
-                          <div style={{ display: "flex", gap: "6px" }}>
-                            <button onClick={() => handleValiderPreinscription(p.id)} style={{ padding: "5px 12px", borderRadius: "7px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#065f46", fontSize: "12px", fontWeight: "700", cursor: "pointer", transition: "background 0.2s" }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = "#dcfce7"}
-                              onMouseLeave={(e) => e.currentTarget.style.background = "#f0fdf4"}
-                            >
-                              ✓ Valider
-                            </button>
-                            <button onClick={() => handleRejeterPreinscription(p.id)} style={{ padding: "5px 12px", borderRadius: "7px", background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: "12px", fontWeight: "700", cursor: "pointer", transition: "background 0.2s" }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = "#fee2e2"}
-                              onMouseLeave={(e) => e.currentTarget.style.background = "#fef2f2"}
-                            >
-                              ✗ Rejeter
-                            </button>
-                          </div>
-                        )}
-                        {p.statut === "valide" && <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "600" }}>Validée</span>}
-                        {p.statut === "rejete" && <span style={{ fontSize: "12px", color: "#ef4444", fontWeight: "600" }}>Rejetée</span>}
                       </td>
                     </tr>
                   ))}
@@ -693,7 +646,7 @@ export default function AdminDashboardPage() {
             <div className="adm-table-wrap" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <TableHeaderRow cols={["Référence", "Montant", "Opérateur", "Téléphone", "Statut", "Action"]} />
+                  <TableHeaderRow cols={["Référence", "Montant", "Opérateur", "Téléphone", "Statut", "Date"]} />
                 </thead>
                 <tbody>
                   {paiements.length === 0 ? (
@@ -707,19 +660,8 @@ export default function AdminDashboardPage() {
                       <td style={{ padding: "13px 14px", fontSize: "13px", color: "#64748b" }}>{p.operateur || "—"}</td>
                       <td style={{ padding: "13px 14px", fontSize: "13px", color: "#64748b" }}>{p.telephone || "—"}</td>
                       <td style={{ padding: "13px 14px" }}><StatusBadge statut={p.statut} /></td>
-                      <td style={{ padding: "13px 14px" }}>
-                        {p.statut === "en_attente" && (
-                          <button
-                            onClick={() => handleValiderPaiement(p.id)}
-                            style={{ padding: "6px 14px", borderRadius: "8px", background: "linear-gradient(135deg, #065f46, #10b981)", border: "none", color: "#fff", fontSize: "12px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", transition: "all 0.2s", boxShadow: "0 3px 8px rgba(16,185,129,0.25)" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 12px rgba(16,185,129,0.3)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 3px 8px rgba(16,185,129,0.25)"; }}
-                          >
-                            <FiCheckCircle size={12} /> Valider
-                          </button>
-                        )}
-                        {p.statut === "valide" && <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "600" }}>Validé</span>}
-                        {(p.statut === "echoue" || p.statut === "rejete") && <span style={{ fontSize: "12px", color: "#ef4444", fontWeight: "600" }}>Échoué</span>}
+                      <td style={{ padding: "13px 14px", fontSize: "12px", color: "#94a3b8" }}>
+                        {p.paye_le ? new Date(p.paye_le).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                       </td>
                     </tr>
                   ))}

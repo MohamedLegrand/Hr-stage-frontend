@@ -21,14 +21,6 @@ const adminService = {
     const response = await axiosInstance.put(`/admin/documents/${id}/rejeter`, { commentaire });
     return response.data;
   },
-  validerPaiement: async (id) => {
-    const response = await axiosInstance.put(`/admin/paiements/${id}/valider`);
-    return response.data;
-  },
-  rejeterPaiement: async (id, commentaire) => {
-    const response = await axiosInstance.put(`/admin/paiements/${id}/rejeter`, { commentaire });
-    return response.data;
-  },
   getPaiements: async () => {
     const response = await axiosInstance.get("/admin/paiements");
     return response.data;

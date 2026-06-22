@@ -8,7 +8,11 @@ const paiementService = {
   initierPaiement: async (data) => {
     const response = await axiosInstance.post("/paiement/initier", data);
     return response.data;
-  }
+  },
+  simulerSucces: async (referenceInterne) => {
+    const response = await axiosInstance.post(`/paiement/simuler-succes/${referenceInterne}`);
+    return response.data;
+  },
 };
 
 export default paiementService;

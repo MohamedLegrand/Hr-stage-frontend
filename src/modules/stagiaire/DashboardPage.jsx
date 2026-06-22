@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../auth/authSlice";
@@ -10,6 +10,8 @@ import { fetchStatutPreinscription, initierPreinscription } from "../preinscript
 import { fetchMesMessages } from "../messages/messagesSlice";
 import messagesService from "../messages/messagesService";
 import documentsService from "../documents/documentsService";
+import paiementService from "../paiement/paiementService";
+import preinscriptionService from "../preinscription/preinscriptionService";
 import {
   FiFileText, FiCreditCard, FiCheckCircle, FiLogOut, FiUser, FiClock,
   FiUpload, FiX, FiUserCheck, FiBell, FiMessageSquare, FiChevronRight,
@@ -157,6 +159,62 @@ export default function DashboardPage() {
   const [totalLoading, setTotalLoading] = useState(false);
   const [totalError, setTotalError] = useState("");
   const [lus, setLus] = useState([]);
+  const [pollingPreinscription, setPollingPreinscription] = useState(false);
+  const [pollingPaiement, setPollingPaiement] = useState(false);
+  const preinscriptionPollRef = useRef(null);
+  const paiementPollRef = useRef(null);
+  const [refPreinscription, setRefPreinscription] = useState(null);
+  const [refPaiement, setRefPaiement] = useState(null);
+  const [simLoadingPreinscription, setSimLoadingPreinscription] = useState(false);
+  const [simLoadingPaiement, setSimLoadingPaiement] = useState(false);
+
+  const startPollingPreinscription = useCallback(() => {
+    if (preinscriptionPollRef.current) return;
+    setPollingPreinscription(true);
+    preinscriptionPollRef.current = setInterval(async () => {
+      try {
+        const result = await dispatch(fetchStatutPreinscription());
+        const data = result.payload;
+        if (!data) return;
+        if (data.statut === "valide" || data.statut === "echoue" || data.statut === "rembourse") {
+          clearInterval(preinscriptionPollRef.current);
+          preinscriptionPollRef.current = null;
+          setPollingPreinscription(false);
+        }
+      } catch { /* réseau → continuer silencieusement */ }
+    }, 3000);
+    setTimeout(() => {
+      if (preinscriptionPollRef.current) {
+        clearInterval(preinscriptionPollRef.current);
+        preinscriptionPollRef.current = null;
+        setPollingPreinscription(false);
+      }
+    }, 10 * 60 * 1000);
+  }, [dispatch]);
+
+  const startPollingPaiement = useCallback(() => {
+    if (paiementPollRef.current) return;
+    setPollingPaiement(true);
+    paiementPollRef.current = setInterval(async () => {
+      try {
+        const result = await dispatch(fetchStatutPaiement());
+        const data = result.payload;
+        if (!data) return;
+        if (data.statut === "valide" || data.statut === "echoue") {
+          clearInterval(paiementPollRef.current);
+          paiementPollRef.current = null;
+          setPollingPaiement(false);
+        }
+      } catch { /* réseau → continuer silencieusement */ }
+    }, 3000);
+    setTimeout(() => {
+      if (paiementPollRef.current) {
+        clearInterval(paiementPollRef.current);
+        paiementPollRef.current = null;
+        setPollingPaiement(false);
+      }
+    }, 10 * 60 * 1000);
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchProfil());
@@ -171,6 +229,27 @@ export default function DashboardPage() {
       setLus(messagesService.getLus(profil.id));
     }
   }, [profil?.id]);
+
+  // Auto-polling si un paiement en attente est détecté au chargement
+  useEffect(() => {
+    if (preinscription?.statut === "en_attente" && !preinscriptionPollRef.current) {
+      startPollingPreinscription();
+    }
+  }, [preinscription?.statut, startPollingPreinscription]);
+
+  useEffect(() => {
+    if (paiement?.statut === "en_attente" && !paiementPollRef.current) {
+      startPollingPaiement();
+    }
+  }, [paiement?.statut, startPollingPaiement]);
+
+  // Cleanup des intervals au démontage du composant
+  useEffect(() => {
+    return () => {
+      if (preinscriptionPollRef.current) clearInterval(preinscriptionPollRef.current);
+      if (paiementPollRef.current) clearInterval(paiementPollRef.current);
+    };
+  }, []);
 
   const notifications = useMemo(() => {
     const notifs = [];
@@ -227,13 +306,21 @@ export default function DashboardPage() {
   const handlePaiement = async (e) => {
     e.preventDefault();
     const result = await dispatch(initierPaiement(paiementForm));
-    if (result.payload?.payment_url) { window.open(result.payload.payment_url, "_blank"); setShowPaiement(false); }
+    if (result.payload?.reference_interne) {
+      setRefPaiement(result.payload.reference_interne);
+      setShowPaiement(false);
+      startPollingPaiement();
+    }
   };
 
   const handlePreinscription = async (e) => {
     e.preventDefault();
     const result = await dispatch(initierPreinscription(preinscriptionForm));
-    if (result.payload?.reference_interne) { setShowPreinscription(false); dispatch(fetchStatutPreinscription()); }
+    if (result.payload?.reference_interne) {
+      setRefPreinscription(result.payload.reference_interne);
+      setShowPreinscription(false);
+      startPollingPreinscription();
+    }
   };
 
   const handlePaiementTotal = async (e) => {
@@ -241,18 +328,44 @@ export default function DashboardPage() {
     setTotalLoading(true); setTotalError("");
     let preinscriptionOk = false;
     try {
-      await dispatch(initierPreinscription(paiementTotalForm)).unwrap();
+      const r1 = await dispatch(initierPreinscription(paiementTotalForm)).unwrap();
       preinscriptionOk = true;
-      await dispatch(initierPaiement(paiementTotalForm)).unwrap();
-      dispatch(fetchStatutPreinscription()); dispatch(fetchStatutPaiement());
+      if (r1?.reference_interne) setRefPreinscription(r1.reference_interne);
+      startPollingPreinscription();
+      const r2 = await dispatch(initierPaiement(paiementTotalForm)).unwrap();
+      if (r2?.reference_interne) setRefPaiement(r2.reference_interne);
+      startPollingPaiement();
       setShowPaiementTotal(false);
     } catch {
       setTotalError(preinscriptionOk
         ? "La pré-inscription a été initiée. Le paiement des frais a échoué — payez-le séparément."
         : "Impossible d'initier la pré-inscription. Veuillez réessayer."
       );
-      dispatch(fetchStatutPreinscription()); dispatch(fetchStatutPaiement());
+      if (!preinscriptionOk) dispatch(fetchStatutPreinscription());
+      dispatch(fetchStatutPaiement());
     } finally { setTotalLoading(false); }
+  };
+
+  const handleSimulerPreinscription = async () => {
+    const ref = refPreinscription || preinscription?.reference_interne;
+    if (!ref || simLoadingPreinscription) return;
+    setSimLoadingPreinscription(true);
+    try {
+      await preinscriptionService.simulerSucces(ref);
+    } catch { /* le polling verra le changement de statut */ } finally {
+      setSimLoadingPreinscription(false);
+    }
+  };
+
+  const handleSimulerPaiement = async () => {
+    const ref = refPaiement || paiement?.reference_interne;
+    if (!ref || simLoadingPaiement) return;
+    setSimLoadingPaiement(true);
+    try {
+      await paiementService.simulerSucces(ref);
+    } catch { /* le polling verra le changement de statut */ } finally {
+      setSimLoadingPaiement(false);
+    }
   };
 
   const marquerToutesLues = () => {
@@ -748,10 +861,10 @@ export default function DashboardPage() {
               </div>
 
               {/* Pré-inscription */}
-              <PreinscriptionCard preinscription={preinscription} onPayer={() => setShowPreinscription(true)} />
+              <PreinscriptionCard preinscription={preinscription} onPayer={() => setShowPreinscription(true)} polling={pollingPreinscription} onSimuler={handleSimulerPreinscription} simLoading={simLoadingPreinscription} />
 
               {/* Paiement */}
-              <PaiementCard paiement={paiement} onPayer={() => setShowPaiement(true)} />
+              <PaiementCard paiement={paiement} onPayer={() => setShowPaiement(true)} polling={pollingPaiement} onSimuler={handleSimulerPaiement} simLoading={simLoadingPaiement} />
             </div>
           </>
         )}
@@ -999,7 +1112,24 @@ export default function DashboardPage() {
                   <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "42px", fontWeight: "800", color: "#4c1d95", letterSpacing: "-0.04em" }}>5 000</div>
                   <div style={{ fontSize: "14px", color: "#7c3aed", fontWeight: "600" }}>XAF</div>
                 </div>
-                {preinscription ? (
+                {pollingPreinscription ? (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{ padding: "14px", borderRadius: "10px", textAlign: "center", background: "#f5f3ff", border: "1px solid #c4b5fd", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", color: "#7c3aed", marginBottom: import.meta.env.DEV ? "10px" : 0 }}>
+                      <span style={{ width: "14px", height: "14px", borderRadius: "50%", border: "2px solid rgba(124,58,237,0.3)", borderTopColor: "#7c3aed", animation: "spin 0.7s linear infinite", display: "inline-block", flexShrink: 0 }} />
+                      <span style={{ fontSize: "13px", fontWeight: "600" }}>En attente de confirmation sur votre téléphone…</span>
+                    </div>
+                    {import.meta.env.DEV && (
+                      <button
+                        type="button"
+                        onClick={handleSimulerPreinscription}
+                        disabled={simLoadingPreinscription}
+                        style={{ width: "100%", padding: "10px", borderRadius: "9px", background: "#fef3c7", border: "1px dashed #f59e0b", color: "#92400e", fontSize: "12px", fontWeight: "600", cursor: simLoadingPreinscription ? "not-allowed" : "pointer", opacity: simLoadingPreinscription ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                      >
+                        {simLoadingPreinscription ? "Simulation…" : "⚡ Simuler confirmation MoMo (dev)"}
+                      </button>
+                    )}
+                  </div>
+                ) : preinscription ? (
                   <div style={{ padding: "14px", borderRadius: "10px", textAlign: "center", ...statutBadge(preinscription.statut), marginBottom: "1rem" }}>
                     <div style={{ fontSize: "14px", fontWeight: "700", marginBottom: "4px" }}>
                       {preinscription.statut === "valide" ? "✅ Pré-inscription validée" : preinscription.statut === "rejete" ? "❌ Rejetée" : "⏳ En attente de confirmation"}
@@ -1011,7 +1141,7 @@ export default function DashboardPage() {
                     Aucune pré-inscription initiée. Cliquez ci-dessous pour commencer.
                   </p>
                 )}
-                {(!preinscription || preinscription.statut !== "valide") && (
+                {(!preinscription || preinscription.statut !== "valide") && !pollingPreinscription && (
                   <button onClick={() => setShowPreinscription(true)} style={{ width: "100%", padding: "13px", borderRadius: "10px", background: "linear-gradient(135deg, #7c3aed, #a78bfa)", color: "#fff", border: "none", fontSize: "14px", fontWeight: "700", cursor: "pointer", transition: "all 0.2s ease" }}
                     onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(124,58,237,0.3)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
@@ -1032,7 +1162,24 @@ export default function DashboardPage() {
                   <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "42px", fontWeight: "800", color: "#4c1d95", letterSpacing: "-0.04em" }}>40 000</div>
                   <div style={{ fontSize: "14px", color: "#7c3aed", fontWeight: "600" }}>XAF</div>
                 </div>
-                {paiement ? (
+                {pollingPaiement ? (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div style={{ padding: "14px", borderRadius: "10px", textAlign: "center", background: "#f5f3ff", border: "1px solid #c4b5fd", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", color: "#7c3aed", marginBottom: import.meta.env.DEV ? "10px" : 0 }}>
+                      <span style={{ width: "14px", height: "14px", borderRadius: "50%", border: "2px solid rgba(124,58,237,0.3)", borderTopColor: "#7c3aed", animation: "spin 0.7s linear infinite", display: "inline-block", flexShrink: 0 }} />
+                      <span style={{ fontSize: "13px", fontWeight: "600" }}>En attente de confirmation sur votre téléphone…</span>
+                    </div>
+                    {import.meta.env.DEV && (
+                      <button
+                        type="button"
+                        onClick={handleSimulerPaiement}
+                        disabled={simLoadingPaiement}
+                        style={{ width: "100%", padding: "10px", borderRadius: "9px", background: "#fef3c7", border: "1px dashed #f59e0b", color: "#92400e", fontSize: "12px", fontWeight: "600", cursor: simLoadingPaiement ? "not-allowed" : "pointer", opacity: simLoadingPaiement ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                      >
+                        {simLoadingPaiement ? "Simulation…" : "⚡ Simuler confirmation MoMo (dev)"}
+                      </button>
+                    )}
+                  </div>
+                ) : paiement ? (
                   <div style={{ padding: "14px", borderRadius: "10px", textAlign: "center", ...statutBadge(paiement.statut), marginBottom: "1rem" }}>
                     <div style={{ fontSize: "14px", fontWeight: "700", marginBottom: "4px" }}>
                       {paiement.statut === "valide" ? "✅ Paiement validé" : paiement.statut === "echoue" ? "❌ Paiement échoué" : "⏳ En attente de confirmation"}
@@ -1044,7 +1191,7 @@ export default function DashboardPage() {
                     Aucun paiement initié. Cliquez ci-dessous pour payer.
                   </p>
                 )}
-                {(!paiement || paiement.statut !== "valide") && (
+                {(!paiement || paiement.statut !== "valide") && !pollingPaiement && (
                   <button onClick={() => setShowPaiement(true)} style={{ width: "100%", padding: "13px", borderRadius: "10px", background: "linear-gradient(135deg, #7c3aed, #a78bfa)", color: "#fff", border: "none", fontSize: "14px", fontWeight: "700", cursor: "pointer", transition: "all 0.2s ease" }}
                     onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(124,58,237,0.3)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
@@ -1189,6 +1336,13 @@ export default function DashboardPage() {
           </div>
         </MobileModal>
       )}
+      {showOnboarding && (
+        <OnboardingTour
+          steps={onboardingSteps}
+          storageKey="hrskills_tour_stagiaire"
+          onComplete={() => setShowOnboarding(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1237,58 +1391,78 @@ function ErrorBox({ children }) {
   );
 }
 
-function PreinscriptionCard({ preinscription, onPayer }) {
+function PreinscriptionCard({ preinscription, onPayer, polling, onSimuler, simLoading }) {
   const s = !preinscription ? { text: "Non initiée", color: "#92400e", bg: "#fffbeb", border: "#fde68a" }
     : preinscription.statut === "valide" ? { text: "Validée", color: "#065f46", bg: "#f0fdf4", border: "#bbf7d0" }
     : preinscription.statut === "rejete" ? { text: "Rejetée", color: "#dc2626", bg: "#fef2f2", border: "#fecaca" }
     : { text: "En attente", color: "#92400e", bg: "#fffbeb", border: "#fde68a" };
 
   return (
-    <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #f0eefe", padding: "1.5rem", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+    <div style={{ background: "#fff", borderRadius: "14px", border: `1px solid ${polling ? "#c4b5fd" : "#f0eefe"}`, padding: "1.5rem", boxShadow: polling ? "0 4px 16px rgba(124,58,237,0.1)" : "0 1px 4px rgba(0,0,0,0.04)" }}>
       <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "14px", fontWeight: "700", color: "#0f172a", marginBottom: "1rem" }}>Pré-inscription</h3>
       <div style={{ textAlign: "center", padding: "1rem", borderRadius: "10px", background: "linear-gradient(135deg, #f5f3ff, #ede9fe)", border: "1px solid #c4b5fd", marginBottom: "1rem" }}>
         <div style={{ fontSize: "10px", color: "#7c3aed", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Frais</div>
         <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "26px", fontWeight: "800", color: "#4c1d95" }}>5 000</div>
         <div style={{ fontSize: "12px", color: "#7c3aed", fontWeight: "600" }}>XAF</div>
       </div>
-      <div style={{ padding: "8px 10px", borderRadius: "8px", background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: "12px", fontWeight: "600", textAlign: "center", marginBottom: "0.75rem" }}>
-        {s.text}
-      </div>
-      {(!preinscription || preinscription.statut !== "valide") && (
+      {polling ? (
+        <div style={{ marginBottom: "0.75rem" }}>
+          <div style={{ padding: "8px 10px", borderRadius: "8px", background: "#f5f3ff", border: "1px solid #c4b5fd", color: "#7c3aed", fontSize: "12px", fontWeight: "600", textAlign: "center", marginBottom: import.meta.env.DEV ? "6px" : 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+            <span style={{ width: "10px", height: "10px", borderRadius: "50%", border: "2px solid rgba(124,58,237,0.3)", borderTopColor: "#7c3aed", animation: "spin 0.7s linear infinite", display: "inline-block", flexShrink: 0 }} />
+            Confirmation en attente…
+          </div>
+          {import.meta.env.DEV && (
+            <button type="button" onClick={onSimuler} disabled={simLoading} style={{ width: "100%", padding: "7px", borderRadius: "7px", background: "#fef3c7", border: "1px dashed #f59e0b", color: "#92400e", fontSize: "11px", fontWeight: "600", cursor: simLoading ? "not-allowed" : "pointer", opacity: simLoading ? 0.7 : 1 }}>
+              {simLoading ? "Simulation…" : "⚡ Simuler MoMo (dev)"}
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ padding: "8px 10px", borderRadius: "8px", background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: "12px", fontWeight: "600", textAlign: "center", marginBottom: "0.75rem" }}>
+          {s.text}
+        </div>
+      )}
+      {(!preinscription || preinscription.statut !== "valide") && !polling && (
         <button onClick={onPayer} style={{ width: "100%", padding: "10px", borderRadius: "9px", background: "linear-gradient(135deg, #7c3aed, #a78bfa)", color: "#fff", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}>
           Payer — 5 000 XAF
         </button>
-      )}
-
-      {showOnboarding && (
-        <OnboardingTour
-          steps={onboardingSteps}
-          storageKey="hrskills_tour_stagiaire"
-          onComplete={() => setShowOnboarding(false)}
-        />
       )}
     </div>
   );
 }
 
-function PaiementCard({ paiement, onPayer }) {
+function PaiementCard({ paiement, onPayer, polling, onSimuler, simLoading }) {
   const s = !paiement ? { text: "Non initié", color: "#92400e", bg: "#fffbeb", border: "#fde68a" }
     : paiement.statut === "valide" ? { text: "Validé", color: "#065f46", bg: "#f0fdf4", border: "#bbf7d0" }
     : paiement.statut === "echoue" ? { text: "Échoué", color: "#dc2626", bg: "#fef2f2", border: "#fecaca" }
     : { text: "En attente", color: "#92400e", bg: "#fffbeb", border: "#fde68a" };
 
   return (
-    <div style={{ background: "#fff", borderRadius: "14px", border: "1px solid #f0eefe", padding: "1.5rem", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+    <div style={{ background: "#fff", borderRadius: "14px", border: `1px solid ${polling ? "#c4b5fd" : "#f0eefe"}`, padding: "1.5rem", boxShadow: polling ? "0 4px 16px rgba(124,58,237,0.1)" : "0 1px 4px rgba(0,0,0,0.04)" }}>
       <h3 style={{ fontFamily: "'Poppins', sans-serif", fontSize: "14px", fontWeight: "700", color: "#0f172a", marginBottom: "1rem" }}>Frais de stage</h3>
       <div style={{ textAlign: "center", padding: "1rem", borderRadius: "10px", background: "linear-gradient(135deg, #f5f3ff, #ede9fe)", border: "1px solid #c4b5fd", marginBottom: "1rem" }}>
         <div style={{ fontSize: "10px", color: "#7c3aed", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Frais</div>
         <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "26px", fontWeight: "800", color: "#4c1d95" }}>40 000</div>
         <div style={{ fontSize: "12px", color: "#7c3aed", fontWeight: "600" }}>XAF</div>
       </div>
-      <div style={{ padding: "8px 10px", borderRadius: "8px", background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: "12px", fontWeight: "600", textAlign: "center", marginBottom: "0.75rem" }}>
-        {s.text}
-      </div>
-      {(!paiement || paiement.statut !== "valide") && (
+      {polling ? (
+        <div style={{ marginBottom: "0.75rem" }}>
+          <div style={{ padding: "8px 10px", borderRadius: "8px", background: "#f5f3ff", border: "1px solid #c4b5fd", color: "#7c3aed", fontSize: "12px", fontWeight: "600", textAlign: "center", marginBottom: import.meta.env.DEV ? "6px" : 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+            <span style={{ width: "10px", height: "10px", borderRadius: "50%", border: "2px solid rgba(124,58,237,0.3)", borderTopColor: "#7c3aed", animation: "spin 0.7s linear infinite", display: "inline-block", flexShrink: 0 }} />
+            Confirmation en attente…
+          </div>
+          {import.meta.env.DEV && (
+            <button type="button" onClick={onSimuler} disabled={simLoading} style={{ width: "100%", padding: "7px", borderRadius: "7px", background: "#fef3c7", border: "1px dashed #f59e0b", color: "#92400e", fontSize: "11px", fontWeight: "600", cursor: simLoading ? "not-allowed" : "pointer", opacity: simLoading ? 0.7 : 1 }}>
+              {simLoading ? "Simulation…" : "⚡ Simuler MoMo (dev)"}
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ padding: "8px 10px", borderRadius: "8px", background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: "12px", fontWeight: "600", textAlign: "center", marginBottom: "0.75rem" }}>
+          {s.text}
+        </div>
+      )}
+      {(!paiement || paiement.statut !== "valide") && !polling && (
         <button onClick={onPayer} style={{ width: "100%", padding: "10px", borderRadius: "9px", background: "linear-gradient(135deg, #7c3aed, #a78bfa)", color: "#fff", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}>
           Payer — 40 000 XAF
         </button>
