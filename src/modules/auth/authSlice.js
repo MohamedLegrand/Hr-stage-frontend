@@ -15,10 +15,8 @@ export const login = createAsyncThunk("auth/login", async (data, thunkAPI) => {
 
 export const register = createAsyncThunk("auth/register", async (data, thunkAPI) => {
   try {
-    const response = await authService.register(data);
-    localStorage.setItem("token", response.access_token);
-    const decoded = jwtDecode(response.access_token);
-    return { token: response.access_token, role: decoded.role };
+    await authService.register(data);
+    return true;
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.detail || "Erreur d'inscription");
   }
@@ -38,7 +36,8 @@ const authSlice = createSlice({
     token: token || null,
     role: role || null,
     loading: false,
-    error: null
+    error: null,
+    registered: false,
   },
   reducers: {
     logout: (state) => {
@@ -46,18 +45,19 @@ const authSlice = createSlice({
       state.role = null;
       localStorage.removeItem("token");
     },
-    clearError: (state) => { state.error = null; }
+    clearError: (state) => { state.error = null; },
+    clearRegistered: (state) => { state.registered = false; },
   },
   extraReducers: (builder) => {
     builder
       .addCase(login.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(login.fulfilled, (state, action) => { state.loading = false; state.token = action.payload.token; state.role = action.payload.role; })
       .addCase(login.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
-      .addCase(register.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(register.fulfilled, (state, action) => { state.loading = false; state.token = action.payload.token; state.role = action.payload.role; })
+      .addCase(register.pending, (state) => { state.loading = true; state.error = null; state.registered = false; })
+      .addCase(register.fulfilled, (state) => { state.loading = false; state.registered = true; })
       .addCase(register.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
   }
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, clearRegistered } = authSlice.actions;
 export default authSlice.reducer;

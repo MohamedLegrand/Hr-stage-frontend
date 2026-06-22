@@ -10,7 +10,7 @@ import { fetchMessagesEnvoyes, envoyerMessage } from "../messages/messagesSlice"
 import {
   FiUsers, FiFileText, FiCreditCard, FiCheckCircle, FiLogOut,
   FiBarChart2, FiEye, FiX, FiExternalLink, FiUserCheck, FiClock,
-  FiMessageSquare, FiSend, FiGlobe, FiMenu, FiSearch, FiAlertCircle,
+  FiMessageSquare, FiSend, FiGlobe, FiMenu, FiSearch,
 } from "react-icons/fi";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -79,14 +79,14 @@ export default function AdminDashboardPage() {
   const [activeMenu, setActiveMenu] = useState("dashboard");
   const [selectedDossier, setSelectedDossier] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const [commentaire, setCommentaire] = useState("");
   const [paiements, setPaiements] = useState([]);
   const [preinscriptions, setPreinscriptions] = useState([]);
   const [msgForm, setMsgForm] = useState({ destinataire: "all", sujet: "", contenu: "" });
   const [msgSucces, setMsgSucces] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [rejectError, setRejectError] = useState("");
+  const [rejectingDocId, setRejectingDocId] = useState(null);
+  const [rejectComment, setRejectComment] = useState("");
 
   useEffect(() => {
     dispatch(fetchDashboard());
@@ -115,19 +115,19 @@ export default function AdminDashboardPage() {
     try {
       const data = await adminService.getDossierDetail(userId);
       setSelectedDossier(data); setSelectedUserId(userId);
-      setCommentaire(""); setRejectError("");
+      setRejectingDocId(null); setRejectComment("");
     } catch { /* silently fail */ }
   };
 
   const handleValiderDoc = async (docId) => {
-    await adminService.validerDocument(docId, commentaire);
+    await adminService.validerDocument(docId, "");
     handleVoirDossier(selectedUserId); dispatch(fetchDashboard()); dispatch(fetchDossiers());
   };
 
   const handleRejeterDoc = async (docId) => {
-    if (!commentaire.trim()) { setRejectError("Le commentaire est obligatoire pour rejeter un document."); return; }
-    setRejectError("");
-    await adminService.rejeterDocument(docId, commentaire);
+    if (!rejectComment.trim()) return;
+    await adminService.rejeterDocument(docId, rejectComment);
+    setRejectingDocId(null); setRejectComment("");
     handleVoirDossier(selectedUserId); dispatch(fetchDashboard()); dispatch(fetchDossiers());
   };
 
@@ -465,31 +465,12 @@ export default function AdminDashboardPage() {
                       {selectedDossier.etablissement} · {selectedDossier.filiere}
                     </div>
                   </div>
-                  <button onClick={() => { setSelectedDossier(null); setSelectedUserId(null); setRejectError(""); }} style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #c4b5fd", cursor: "pointer", color: "#4c1d95", borderRadius: "8px", padding: "6px", display: "flex" }}>
+                  <button onClick={() => { setSelectedDossier(null); setSelectedUserId(null); setRejectingDocId(null); setRejectComment(""); }} style={{ background: "rgba(255,255,255,0.7)", border: "1px solid #c4b5fd", cursor: "pointer", color: "#4c1d95", borderRadius: "8px", padding: "6px", display: "flex" }}>
                     <FiX size={16} />
                   </button>
                 </div>
 
                 <div style={{ padding: "1.5rem", maxHeight: "calc(100vh - 210px)", overflowY: "auto" }}>
-
-                  {/* Commentaire */}
-                  <div style={{ marginBottom: "1.25rem" }}>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#374151", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      Commentaire de validation / rejet
-                    </label>
-                    <input
-                      placeholder="Ajoutez un commentaire (obligatoire pour rejeter)…"
-                      value={commentaire} onChange={(e) => { setCommentaire(e.target.value); setRejectError(""); }}
-                      style={{ ...inputStyle, background: "#faf9ff" }}
-                      onFocus={(e) => e.target.style.borderColor = "#7c3aed"}
-                      onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
-                    />
-                    {rejectError && (
-                      <div style={{ marginTop: "6px", fontSize: "12px", color: "#dc2626", display: "flex", gap: "5px", alignItems: "center" }}>
-                        <FiAlertCircle size={12} /> {rejectError}
-                      </div>
-                    )}
-                  </div>
 
                   {/* Documents */}
                   <div style={{ marginBottom: "1.75rem" }}>
@@ -526,20 +507,50 @@ export default function AdminDashboardPage() {
                                 </div>
                               </div>
                               {doc.statut === "en_attente" && (
-                                <div style={{ display: "flex", gap: "8px", padding: "0 14px 12px" }}>
-                                  <button onClick={() => handleValiderDoc(doc.id)} style={{ flex: 1, padding: "7px", borderRadius: "8px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#065f46", fontSize: "12px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", transition: "all 0.2s" }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = "#dcfce7"}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = "#f0fdf4"}
-                                  >
-                                    <FiCheckCircle size={12} /> Valider
-                                  </button>
-                                  <button onClick={() => handleRejeterDoc(doc.id)} style={{ flex: 1, padding: "7px", borderRadius: "8px", background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: "12px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", transition: "all 0.2s" }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = "#fee2e2"}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = "#fef2f2"}
-                                  >
-                                    <FiX size={12} /> Rejeter
-                                  </button>
-                                </div>
+                                rejectingDocId === doc.id ? (
+                                  <div style={{ padding: "0 14px 12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                                    <input
+                                      autoFocus
+                                      placeholder="Motif du rejet (obligatoire)…"
+                                      value={rejectComment}
+                                      onChange={(e) => setRejectComment(e.target.value)}
+                                      style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1.5px solid #e5e7eb", fontSize: "12px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", color: "#0f172a" }}
+                                      onFocus={(e) => e.target.style.borderColor = "#7c3aed"}
+                                      onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                                      onKeyDown={(e) => { if (e.key === "Enter") handleRejeterDoc(doc.id); if (e.key === "Escape") { setRejectingDocId(null); setRejectComment(""); } }}
+                                    />
+                                    <div style={{ display: "flex", gap: "8px" }}>
+                                      <button
+                                        onClick={() => handleRejeterDoc(doc.id)}
+                                        disabled={!rejectComment.trim()}
+                                        style={{ flex: 1, padding: "7px", borderRadius: "8px", background: rejectComment.trim() ? "#fef2f2" : "#f9fafb", border: `1px solid ${rejectComment.trim() ? "#fecaca" : "#e5e7eb"}`, color: rejectComment.trim() ? "#dc2626" : "#9ca3af", fontSize: "12px", fontWeight: "700", cursor: rejectComment.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}
+                                      >
+                                        <FiX size={12} /> Confirmer le rejet
+                                      </button>
+                                      <button
+                                        onClick={() => { setRejectingDocId(null); setRejectComment(""); }}
+                                        style={{ padding: "7px 12px", borderRadius: "8px", background: "#f8fafc", border: "1px solid #e2e8f0", color: "#64748b", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}
+                                      >
+                                        Annuler
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: "flex", gap: "8px", padding: "0 14px 12px" }}>
+                                    <button onClick={() => handleValiderDoc(doc.id)} style={{ flex: 1, padding: "7px", borderRadius: "8px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#065f46", fontSize: "12px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", transition: "all 0.2s" }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = "#dcfce7"}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = "#f0fdf4"}
+                                    >
+                                      <FiCheckCircle size={12} /> Valider
+                                    </button>
+                                    <button onClick={() => { setRejectingDocId(doc.id); setRejectComment(""); }} style={{ flex: 1, padding: "7px", borderRadius: "8px", background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: "12px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", transition: "all 0.2s" }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = "#fee2e2"}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = "#fef2f2"}
+                                    >
+                                      <FiX size={12} /> Rejeter
+                                    </button>
+                                  </div>
+                                )
                               )}
                               {doc.commentaire && (
                                 <div style={{ padding: "8px 14px 12px", fontSize: "12px", color: "#64748b", borderTop: "1px solid #f3f4f6", lineHeight: "1.5" }}>

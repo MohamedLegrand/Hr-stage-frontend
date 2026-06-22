@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { register, clearError } from "./authSlice";
+import { register, clearError, clearRegistered } from "./authSlice";
 import {
   FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiPhone,
   FiBook, FiCalendar, FiCheckCircle, FiArrowRight, FiArrowLeft,
@@ -12,7 +12,7 @@ const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Poppi
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading, error, token, role } = useSelector((s) => s.auth);
+  const { loading, error, registered } = useSelector((s) => s.auth);
 
   const [showPwd, setShowPwd] = useState(false);
   const [step, setStep] = useState(1);
@@ -24,7 +24,13 @@ export default function RegisterPage() {
     date_debut: "", date_fin: "",
   });
 
-  useEffect(() => { if (token && role) navigate("/dashboard"); }, [token, role]);
+  useEffect(() => {
+    if (registered) {
+      dispatch(clearRegistered());
+      navigate("/login", { state: { fromRegister: true } });
+    }
+  }, [registered]);
+
   useEffect(() => { return () => dispatch(clearError()); }, []);
 
   const handleSubmit = (e) => {

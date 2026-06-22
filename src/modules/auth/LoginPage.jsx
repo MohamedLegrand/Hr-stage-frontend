@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { login, clearError } from "./authSlice";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight, FiCheckCircle } from "react-icons/fi";
@@ -9,7 +9,9 @@ const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Poppi
 export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { loading, error, role, token } = useSelector((s) => s.auth);
+  const fromRegister = location.state?.fromRegister === true;
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
@@ -124,6 +126,24 @@ export default function LoginPage() {
               Connectez-vous pour accéder à votre espace stagiaire
             </p>
           </div>
+
+          {/* BANNIÈRE SUCCÈS INSCRIPTION */}
+          {fromRegister && (
+            <div
+              style={{
+                padding: "12px 16px", borderRadius: "10px",
+                background: "#f0fdf4", border: "1px solid #bbf7d0",
+                color: "#065f46", fontSize: "13px",
+                marginBottom: "1.5rem",
+                display: "flex", alignItems: "center", gap: "10px",
+              }}
+            >
+              <FiCheckCircle size={16} style={{ flexShrink: 0, color: "#10b981" }} />
+              <span>
+                <strong>Compte créé avec succès !</strong> Connectez-vous pour accéder à votre espace.
+              </span>
+            </div>
+          )}
 
           {/* MESSAGE D'ERREUR */}
           {error && (
