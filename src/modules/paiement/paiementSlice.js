@@ -3,8 +3,8 @@ import paiementService from "./paiementService";
 
 export const fetchStatutPaiement = createAsyncThunk("paiement/fetchStatut", async (_, thunkAPI) => {
   try {
-    return await paiementService.getStatut();
-  } catch (error) {
+    return await paiementService.getStatut(); // null si aucun paiement (200), objet sinon
+  } catch {
     return thunkAPI.rejectWithValue(null);
   }
 });

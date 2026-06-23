@@ -1,24 +1,21 @@
 import axiosInstance from "../../api/axiosInstance";
 
 const paiementService = {
+  // Retourne null (200) si aucun paiement, objet paiement sinon
   getStatut: async () => {
-    const response = await axiosInstance.get("/paiement/statut");
-    return response.data;
+    const { data } = await axiosInstance.get("/paiement/statut");
+    return data;
   },
-  initierPaiement: async (data) => {
-    const response = await axiosInstance.post("/paiement/initier", data);
-    return response.data;
+
+  initierPaiement: async ({ telephone, operateur }) => {
+    const { data } = await axiosInstance.post("/paiement/initier", { telephone, operateur });
+    return data;
   },
+
   simulerSucces: async (referenceInterne) => {
-    const response = await axiosInstance.post(`/paiement/simuler-succes/${referenceInterne}`);
-    return response.data;
+    const { data } = await axiosInstance.post(`/paiement/simuler-succes/${referenceInterne}`);
+    return data;
   },
 };
 
 export default paiementService;
-
-// Optional: admin-facing list endpoint (non-admin route exists at /admin/paiements)
-paiementService.getPaiementsList = async () => {
-  const response = await axiosInstance.get("/paiement/liste");
-  return response.data;
-};

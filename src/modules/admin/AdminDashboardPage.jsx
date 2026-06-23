@@ -10,7 +10,8 @@ import { fetchMessagesEnvoyes, envoyerMessage } from "../messages/messagesSlice"
 import {
   FiUsers, FiFileText, FiCreditCard, FiCheckCircle, FiLogOut,
   FiBarChart2, FiEye, FiX, FiExternalLink, FiUserCheck, FiClock,
-  FiMessageSquare, FiSend, FiGlobe, FiMenu, FiSearch,
+  FiMessageSquare, FiSend, FiGlobe, FiMenu, FiSearch, FiHelpCircle,
+  FiBell, FiTrash2, FiCheck,
 } from "react-icons/fi";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -87,18 +88,56 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [rejectingDocId, setRejectingDocId] = useState(null);
   const [rejectComment, setRejectComment] = useState("");
+  const [adminNotifs, setAdminNotifs] = useState([]);
+  const [showAdminNotifs, setShowAdminNotifs] = useState(false);
+  const [deletedAdminNotifIds, setDeletedAdminNotifIds] = useState([]);
+  const [luAdminNotifIds, setLuAdminNotifIds] = useState([]);
+  const [selectedAdminNotifIds, setSelectedAdminNotifIds] = useState([]);
+  const [adminNotifDetail, setAdminNotifDetail] = useState(null);
+  const [adminNotifSelectMode, setAdminNotifSelectMode] = useState(false);
 
   useEffect(() => {
     dispatch(fetchDashboard());
     dispatch(fetchDossiers());
     dispatch(fetchMessagesEnvoyes());
+    setAdminNotifs(JSON.parse(localStorage.getItem("hrskills_admin_notifs") || "[]"));
+    setDeletedAdminNotifIds(JSON.parse(localStorage.getItem("hrskills_admin_deleted_notifs") || "[]"));
+    setLuAdminNotifIds(JSON.parse(localStorage.getItem("hrskills_admin_lu_notifs") || "[]"));
   }, []);
+
+  useEffect(() => {
+    if (!showAdminNotifs) { setAdminNotifSelectMode(false); setSelectedAdminNotifIds([]); }
+  }, [showAdminNotifs]);
 
   useEffect(() => {
     if (activeMenu === "paiements") adminService.getPaiements().then(setPaiements);
     if (activeMenu === "preinscriptions") preinscriptionService.getListe().then(setPreinscriptions);
     if (activeMenu === "messages") dispatch(fetchMessagesEnvoyes());
   }, [activeMenu]);
+
+  const visibleAdminNotifs = adminNotifs.filter((n) => !deletedAdminNotifIds.includes(n.id));
+  const adminNotifsNonLues = visibleAdminNotifs.filter((n) => !luAdminNotifIds.includes(n.id)).length;
+
+  const refreshAdminNotifs = () => {
+    setAdminNotifs(JSON.parse(localStorage.getItem("hrskills_admin_notifs") || "[]"));
+    setDeletedAdminNotifIds(JSON.parse(localStorage.getItem("hrskills_admin_deleted_notifs") || "[]"));
+  };
+
+  const deleteAdminNotifs = (ids) => {
+    setDeletedAdminNotifIds((prev) => {
+      const newDeleted = [...new Set([...prev, ...ids])];
+      localStorage.setItem("hrskills_admin_deleted_notifs", JSON.stringify(newDeleted));
+      return newDeleted;
+    });
+    setSelectedAdminNotifIds([]);
+    setAdminNotifSelectMode(false);
+  };
+
+  const marquerAdminNotifsLues = () => {
+    const ids = visibleAdminNotifs.map((n) => n.id);
+    setLuAdminNotifIds(ids);
+    localStorage.setItem("hrskills_admin_lu_notifs", JSON.stringify(ids));
+  };
 
   const handleLogout = () => { dispatch(logout()); navigate("/login"); };
 
@@ -280,6 +319,14 @@ export default function AdminDashboardPage() {
             <div style={{ fontSize: "13px", color: "#fff", fontWeight: "600" }}>Administrateur</div>
           </div>
           <button
+            onClick={() => { localStorage.removeItem("hrskills_tour_admin"); setShowOnboarding(true); setSidebarOpen(false); }}
+            style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", padding: "9px 12px", borderRadius: "10px", background: "transparent", border: "1px solid rgba(167,139,250,0.22)", color: "rgba(255,255,255,0.55)", fontSize: "13px", cursor: "pointer", transition: "all 0.2s", marginBottom: "6px", fontFamily: "'Inter', sans-serif" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(167,139,250,0.14)"; e.currentTarget.style.color = "#c4b5fd"; e.currentTarget.style.borderColor = "rgba(167,139,250,0.4)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; e.currentTarget.style.borderColor = "rgba(167,139,250,0.22)"; }}
+          >
+            <FiHelpCircle size={15} /> Rejouer le tutoriel
+          </button>
+          <button
             onClick={handleLogout}
             style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", padding: "10px 12px", borderRadius: "10px", background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(255,255,255,0.7)", fontSize: "14px", cursor: "pointer", transition: "background 0.2s" }}
             onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239,68,68,0.2)"}
@@ -315,6 +362,125 @@ export default function AdminDashboardPage() {
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {/* Cloche notifications admin */}
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => { refreshAdminNotifs(); setShowAdminNotifs((v) => !v); }}
+                style={{ background: "#fff", border: "1px solid #ede9fe", borderRadius: "10px", padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", color: "#312e81", position: "relative", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", transition: "all 0.2s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c4b5fd"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(49,46,129,0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#ede9fe"; e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)"; }}
+              >
+                <FiBell size={17} />
+                {adminNotifsNonLues > 0 && (
+                  <span style={{ position: "absolute", top: "-5px", right: "-5px", background: "#ef4444", color: "#fff", borderRadius: "99px", fontSize: "9px", fontWeight: "700", padding: "1px 5px" }}>
+                    {adminNotifsNonLues}
+                  </span>
+                )}
+              </button>
+
+              {/* Panneau notifications admin */}
+              {showAdminNotifs && (
+                <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 50, background: "#fff", borderRadius: "16px", border: "1px solid #ede9fe", boxShadow: "0 16px 48px rgba(15,23,42,0.12)", width: "360px", animation: "fadeIn 0.15s ease" }}>
+                  {/* Header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem", borderBottom: "1px solid #f3f4f6" }}>
+                    <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "700", fontSize: "14px", color: "#0f172a", display: "flex", alignItems: "center", gap: "6px" }}>
+                      Notifications
+                      {adminNotifsNonLues > 0 && (
+                        <span style={{ background: "#ef4444", color: "#fff", borderRadius: "99px", fontSize: "10px", fontWeight: "700", padding: "1px 6px" }}>{adminNotifsNonLues}</span>
+                      )}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {adminNotifsNonLues > 0 && (
+                        <button onClick={marquerAdminNotifsLues} style={{ fontSize: "11px", color: "#312e81", background: "#f5f3ff", border: "1px solid #ede9fe", borderRadius: "7px", padding: "3px 8px", cursor: "pointer", fontWeight: "600" }}>Tout lire</button>
+                      )}
+                      <button onClick={() => setShowAdminNotifs(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: "4px", display: "flex", borderRadius: "6px" }}>
+                        <FiX size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Barre d'actions */}
+                  {visibleAdminNotifs.length > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 1.25rem", background: "#fafafa", borderBottom: "1px solid #f3f4f6" }}>
+                      {adminNotifSelectMode ? (
+                        <>
+                          <button onClick={() => setSelectedAdminNotifIds(selectedAdminNotifIds.length === visibleAdminNotifs.length ? [] : visibleAdminNotifs.map((n) => n.id))} style={{ fontSize: "11px", color: "#312e81", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}>
+                            {selectedAdminNotifIds.length === visibleAdminNotifs.length ? "Tout déselectionner" : "Tout sélectionner"}
+                          </button>
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            {selectedAdminNotifIds.length > 0 && (
+                              <button onClick={() => deleteAdminNotifs(selectedAdminNotifIds)} style={{ fontSize: "11px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "7px", padding: "3px 8px", cursor: "pointer", fontWeight: "600" }}>
+                                Supprimer ({selectedAdminNotifIds.length})
+                              </button>
+                            )}
+                            <button onClick={() => { setAdminNotifSelectMode(false); setSelectedAdminNotifIds([]); }} style={{ fontSize: "11px", color: "#64748b", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}>Annuler</button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => setAdminNotifSelectMode(true)} style={{ fontSize: "11px", color: "#64748b", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}>Sélectionner</button>
+                          <button onClick={() => deleteAdminNotifs(visibleAdminNotifs.map((n) => n.id))} style={{ fontSize: "11px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}>Vider tout</button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Liste */}
+                  <div style={{ maxHeight: "340px", overflowY: "auto" }}>
+                    {visibleAdminNotifs.length === 0 ? (
+                      <div style={{ padding: "2.5rem", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>Aucune notification</div>
+                    ) : visibleAdminNotifs.map((n) => {
+                      const nonLue = !luAdminNotifIds.includes(n.id);
+                      const isSelected = selectedAdminNotifIds.includes(n.id);
+                      return (
+                        <div
+                          key={n.id}
+                          onClick={() => {
+                            if (adminNotifSelectMode) {
+                              setSelectedAdminNotifIds(isSelected ? selectedAdminNotifIds.filter((id) => id !== n.id) : [...selectedAdminNotifIds, n.id]);
+                            } else {
+                              setAdminNotifDetail(n);
+                              setShowAdminNotifs(false);
+                              if (nonLue) {
+                                const newLus = [...luAdminNotifIds, n.id];
+                                setLuAdminNotifIds(newLus);
+                                localStorage.setItem("hrskills_admin_lu_notifs", JSON.stringify(newLus));
+                              }
+                            }
+                          }}
+                          style={{ padding: "0.85rem 1.25rem", borderBottom: "1px solid #f9fafb", background: isSelected ? "#ede9fe" : nonLue ? "#faf5ff" : "#fff", display: "flex", gap: "10px", alignItems: "flex-start", cursor: "pointer", transition: "background 0.12s" }}
+                          onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "#f5f3ff"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "#ede9fe" : nonLue ? "#faf5ff" : "#fff"; }}
+                        >
+                          {adminNotifSelectMode ? (
+                            <div style={{ width: "16px", height: "16px", borderRadius: "4px", border: `2px solid ${isSelected ? "#7c3aed" : "#d1d5db"}`, background: isSelected ? "#7c3aed" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "3px" }}>
+                              {isSelected && <FiCheck size={10} style={{ color: "#fff" }} />}
+                            </div>
+                          ) : (
+                            <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: nonLue ? "#7c3aed" : "#e5e7eb", marginTop: "6px", flexShrink: 0 }} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: "13px", color: "#1e293b", lineHeight: "1.5", fontWeight: nonLue ? "600" : "400", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.texte}</div>
+                            {n.date && <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{new Date(n.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>}
+                          </div>
+                          {!adminNotifSelectMode && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteAdminNotifs([n.id]); }}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "#d1d5db", padding: "3px", display: "flex", borderRadius: "5px", flexShrink: 0, transition: "all 0.15s" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.background = "#fef2f2"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = "#d1d5db"; e.currentTarget.style.background = "none"; }}
+                            >
+                              <FiTrash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(135deg, #312e81, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "13px", fontWeight: "800" }}>A</div>
             <div>
               <div style={{ fontSize: "13px", fontWeight: "600", color: "#0f172a" }}>Administrateur</div>
@@ -806,6 +972,73 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </main>
+
+      {/* ── MODAL DÉTAIL NOTIFICATION ADMIN ── */}
+      {adminNotifDetail && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.52)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 300, backdropFilter: "blur(4px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setAdminNotifDetail(null); }}
+        >
+          <div style={{ background: "#fff", borderRadius: "20px", width: "100%", maxWidth: "460px", boxShadow: "0 24px 64px rgba(15,23,42,0.18)", overflow: "hidden", animation: "fadeIn 0.18s ease" }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", borderBottom: "1px solid #f3f4f6", background: "linear-gradient(135deg, #f5f3ff, #ede9fe)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ width: "40px", height: "40px", borderRadius: "11px", background: "#ede9fe", border: "1px solid #c4b5fd", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <FiFileText size={17} style={{ color: "#7c3aed" }} />
+                </div>
+                <div>
+                  <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "14px", fontWeight: "700", color: "#0f172a", lineHeight: "1.3" }}>{adminNotifDetail.texte}</div>
+                  {adminNotifDetail.date && <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{new Date(adminNotifDetail.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>}
+                </div>
+              </div>
+              <button onClick={() => setAdminNotifDetail(null)} style={{ background: "rgba(255,255,255,0.8)", border: "none", cursor: "pointer", color: "#64748b", borderRadius: "8px", padding: "6px", display: "flex", flexShrink: 0 }}>
+                <FiX size={16} />
+              </button>
+            </div>
+            {/* Contenu */}
+            <div style={{ padding: "1.25rem 1.5rem" }}>
+              <div style={{ fontSize: "14px", color: "#374151", lineHeight: "1.75", whiteSpace: "pre-wrap" }}>{adminNotifDetail.contenu}</div>
+              {adminNotifDetail.userName && (
+                <div style={{ marginTop: "1rem", padding: "10px 14px", background: "#f8fafc", borderRadius: "9px", border: "1px solid #e5e7eb" }}>
+                  <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "3px" }}>Stagiaire</div>
+                  <div style={{ fontSize: "13px", fontWeight: "600", color: "#1e293b" }}>{adminNotifDetail.userName}</div>
+                </div>
+              )}
+            </div>
+            {/* Footer */}
+            <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #f3f4f6", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+              <button
+                onClick={() => { deleteAdminNotifs([adminNotifDetail.id]); setAdminNotifDetail(null); }}
+                style={{ fontSize: "13px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "9px", padding: "7px 14px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "5px" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "#fee2e2"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "#fef2f2"}
+              >
+                <FiTrash2 size={13} /> Supprimer
+              </button>
+              <div style={{ display: "flex", gap: "8px" }}>
+                {adminNotifDetail.type === "upload_document" && (
+                  <button
+                    onClick={() => { setActiveMenu("dossiers"); setAdminNotifDetail(null); }}
+                    style={{ fontSize: "13px", color: "#312e81", background: "#f5f3ff", border: "1px solid #c4b5fd", borderRadius: "9px", padding: "7px 14px", cursor: "pointer", fontWeight: "600" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#ede9fe"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#f5f3ff"}
+                  >
+                    Voir les dossiers
+                  </button>
+                )}
+                <button
+                  onClick={() => setAdminNotifDetail(null)}
+                  style={{ fontSize: "13px", color: "#64748b", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: "9px", padding: "7px 14px", cursor: "pointer", fontWeight: "600" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#f8fafc"}
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showOnboarding && (
         <OnboardingTour

@@ -1,52 +1,56 @@
-// Messaging service — localStorage-based (remplaçable par des appels API)
-const MESSAGES_KEY = "hrskills_messages";
+import axiosInstance from "../../api/axiosInstance";
+
 const luKey = (userId) => `hrskills_lu_${userId}`;
 
+// Normalise un message backend → format attendu par les composants
+// Backend :  { id, sujet, contenu, date_envoi, destinataire_id }
+// Frontend : { id, sujet, contenu, date,       destinataire }
+const normalize = (msg) => ({
+  ...msg,
+  date: msg.date_envoi || msg.date,
+  destinataire: msg.destinataire_id === null || msg.destinataire_id === undefined
+    ? (msg.destinataire ?? "all")
+    : String(msg.destinataire_id),
+});
+
 const messagesService = {
-  // Admin → envoyer un message (destinataire: "all" ou userId string)
+  // Admin → envoyer un message
+  // Body : { destinataire: "all" | "<userId>", sujet, contenu }
   envoyerMessage: async ({ destinataire, sujet, contenu }) => {
-    const messages = JSON.parse(localStorage.getItem(MESSAGES_KEY) || "[]");
-    const msg = {
-      id: Date.now(),
-      destinataire,
+    const response = await axiosInstance.post("/messages/envoyer", {
+      destinataire: destinataire === "all" ? "all" : destinataire,
       sujet,
       contenu,
-      date: new Date().toISOString(),
-    };
-    messages.unshift(msg);
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
-    return msg;
+    });
+    return normalize(response.data);
   },
 
-  // Admin → liste de tous les messages envoyés
+  // Admin → historique des messages envoyés
   getMessagesEnvoyes: async () => {
-    return JSON.parse(localStorage.getItem(MESSAGES_KEY) || "[]");
+    const response = await axiosInstance.get("/messages/envoyes");
+    return (response.data ?? []).map(normalize);
   },
 
-  // Stagiaire → ses messages (destinataire "all" ou son userId)
-  getMesMessages: async (userId) => {
-    const messages = JSON.parse(localStorage.getItem(MESSAGES_KEY) || "[]");
-    return messages.filter(
-      (m) => m.destinataire === "all" || m.destinataire === String(userId)
-    );
+  // Stagiaire → ses messages (JWT suffit, backend filtre par utilisateur)
+  getMesMessages: async () => {
+    const response = await axiosInstance.get("/messages/mes");
+    return (response.data ?? []).map(normalize);
   },
 
-  // Stagiaire → marquer un message comme lu
+  // Lu/non-lu reste en localStorage (local à la session, pas besoin de backend)
   marquerLu: (msgId, userId) => {
     const lus = JSON.parse(localStorage.getItem(luKey(userId)) || "[]");
-    if (!lus.includes(msgId)) {
-      localStorage.setItem(luKey(userId), JSON.stringify([...lus, msgId]));
+    if (!lus.includes(String(msgId))) {
+      localStorage.setItem(luKey(userId), JSON.stringify([...lus, String(msgId)]));
     }
   },
 
-  // Stagiaire → IDs des messages lus
   getLus: (userId) => {
     return JSON.parse(localStorage.getItem(luKey(userId)) || "[]");
   },
 
-  // Stagiaire → marquer tous les messages comme lus
   marquerTousLus: (messages, userId) => {
-    const ids = messages.map((m) => m.id);
+    const ids = messages.map((m) => String(m.id));
     localStorage.setItem(luKey(userId), JSON.stringify(ids));
   },
 };

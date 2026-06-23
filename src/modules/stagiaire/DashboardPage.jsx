@@ -15,7 +15,7 @@ import preinscriptionService from "../preinscription/preinscriptionService";
 import {
   FiFileText, FiCreditCard, FiCheckCircle, FiLogOut, FiUser, FiClock,
   FiUpload, FiX, FiUserCheck, FiBell, FiMessageSquare, FiChevronRight,
-  FiMenu, FiHome, FiAlertCircle,
+  FiMenu, FiHome, FiAlertCircle, FiTrash2, FiCheck,
 } from "react-icons/fi";
 
 const DOC_TYPES = [
@@ -167,6 +167,10 @@ export default function DashboardPage() {
   const [refPaiement, setRefPaiement] = useState(null);
   const [simLoadingPreinscription, setSimLoadingPreinscription] = useState(false);
   const [simLoadingPaiement, setSimLoadingPaiement] = useState(false);
+  const [deletedNotifIds, setDeletedNotifIds] = useState([]);
+  const [selectedNotifIds, setSelectedNotifIds] = useState([]);
+  const [notifDetail, setNotifDetail] = useState(null);
+  const [notifSelectMode, setNotifSelectMode] = useState(false);
 
   const startPollingPreinscription = useCallback(() => {
     if (preinscriptionPollRef.current) return;
@@ -225,10 +229,26 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (profil?.id) {
-      dispatch(fetchMesMessages(profil.id));
+      dispatch(fetchMesMessages());
       setLus(messagesService.getLus(profil.id));
+      const deletedKey = `hrskills_deleted_notifs_${profil.id}`;
+      setDeletedNotifIds(JSON.parse(localStorage.getItem(deletedKey) || "[]"));
     }
   }, [profil?.id]);
+
+  // Rafraîchit les messages quand le stagiaire revient sur l'onglet
+  useEffect(() => {
+    if (!profil?.id) return;
+    const handleVisibility = () => {
+      if (!document.hidden) dispatch(fetchMesMessages());
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [profil?.id, dispatch]);
+
+  useEffect(() => {
+    if (!showNotifs) { setNotifSelectMode(false); setSelectedNotifIds([]); }
+  }, [showNotifs]);
 
   // Auto-polling si un paiement en attente est détecté au chargement
   useEffect(() => {
@@ -255,22 +275,57 @@ export default function DashboardPage() {
     const notifs = [];
     if (paiement) {
       const label = paiement.statut === "valide" ? "Frais de stage validés" : paiement.statut === "echoue" ? "Paiement de stage échoué" : "Paiement de stage en attente";
-      notifs.push({ id: `pay-${paiement.statut}`, type: "paiement", texte: label, date: paiement.paye_le || paiement.created_at });
+      const contenu = paiement.statut === "valide"
+        ? `Votre paiement de ${paiement.montant ?? ""} XAF a été validé avec succès.`
+        : paiement.statut === "echoue"
+        ? `Votre paiement de ${paiement.montant ?? ""} XAF a échoué. Veuillez réessayer.`
+        : `Votre paiement de ${paiement.montant ?? ""} XAF est en cours de traitement via ${paiement.operateur ?? "Mobile Money"}.`;
+      notifs.push({ id: `pay-${paiement.statut}`, type: "paiement", texte: label, contenu, date: paiement.paye_le || paiement.created_at });
     }
     if (preinscription) {
       const label = preinscription.statut === "valide" ? "Pré-inscription validée" : preinscription.statut === "rejete" ? "Pré-inscription rejetée" : "Pré-inscription en attente";
-      notifs.push({ id: `preinsc-${preinscription.statut}`, type: "preinscription", texte: label, date: preinscription.paye_le || preinscription.created_at });
+      const contenu = preinscription.statut === "valide"
+        ? "Votre pré-inscription a été validée. Vous pouvez procéder au paiement des frais de stage."
+        : preinscription.statut === "rejete"
+        ? "Votre pré-inscription a été rejetée. Contactez l'administration pour plus d'informations."
+        : "Votre pré-inscription est en cours de traitement.";
+      notifs.push({ id: `preinsc-${preinscription.statut}`, type: "preinscription", texte: label, contenu, date: preinscription.paye_le || preinscription.created_at });
     }
     documents.forEach((doc) => {
-      if (doc.statut === "valide") notifs.push({ id: `doc-v-${doc.id}`, type: "document", texte: `Document validé : ${doc.type?.replace(/_/g, " ")}`, date: doc.updated_at });
-      if (doc.statut === "rejete") notifs.push({ id: `doc-r-${doc.id}`, type: "document", texte: `Document rejeté : ${doc.type?.replace(/_/g, " ")}`, date: doc.updated_at });
+      const typeLabel = doc.type?.replace(/_/g, " ") ?? "";
+      if (doc.statut === "valide") notifs.push({
+        id: `doc-v-${doc.id}`, type: "document",
+        texte: `Document validé : ${typeLabel}`,
+        contenu: `Votre document "${typeLabel}" a été validé par l'administration.`,
+        date: doc.updated_at,
+      });
+      if (doc.statut === "rejete") notifs.push({
+        id: `doc-r-${doc.id}`, type: "document",
+        texte: `Document rejeté : ${typeLabel}`,
+        motif: doc.commentaire || null,
+        contenu: doc.commentaire
+          ? `Votre document "${typeLabel}" a été rejeté.\n\nMotif : ${doc.commentaire}\n\nVeuillez soumettre une version corrigée.`
+          : `Votre document "${typeLabel}" a été rejeté. Veuillez le soumettre à nouveau.`,
+        date: doc.updated_at,
+      });
     });
-    messages.forEach((m) => notifs.push({ id: `msg-${m.id}`, type: "message", texte: m.sujet, date: m.date }));
+    messages.forEach((m) => notifs.push({ id: `msg-${m.id}`, type: "message", texte: m.sujet, contenu: m.contenu, date: m.date }));
     return notifs;
   }, [paiement, preinscription, documents, messages]);
 
-  const notifsNonLues = notifications.filter((n) => !lus.includes(n.id)).length;
+  const visibleNotifications = notifications.filter((n) => !deletedNotifIds.includes(n.id));
+  const notifsNonLues = visibleNotifications.filter((n) => !lus.includes(n.id)).length;
   const docsValides = documents.filter((d) => d.statut === "valide").length;
+
+  const deleteNotifications = (ids) => {
+    setDeletedNotifIds((prev) => {
+      const newDeleted = [...new Set([...prev, ...ids])];
+      if (profil?.id) localStorage.setItem(`hrskills_deleted_notifs_${profil.id}`, JSON.stringify(newDeleted));
+      return newDeleted;
+    });
+    setSelectedNotifIds([]);
+    setNotifSelectMode(false);
+  };
 
   const getDocStatut = (type) => {
     const doc = documents.find((d) => d.type === type);
@@ -291,12 +346,33 @@ export default function DashboardPage() {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    const files = DOC_TYPES.filter((d) => uploadFiles[d.value]).map((d) => ({ type: d.value, file: uploadFiles[d.value] }));
+    const uploadableTypes = DOC_TYPES.filter((d) => {
+      const docObj = documents.find((doc) => doc.type === d.value);
+      return !docObj || docObj.statut !== "valide";
+    });
+    const files = uploadableTypes.filter((d) => uploadFiles[d.value]).map((d) => ({ type: d.value, file: uploadFiles[d.value] }));
     if (files.length === 0) { setUploadError("Sélectionnez au moins un document."); return; }
     setUploading(true); setUploadError("");
     try {
       await documentsService.uploadDocuments(files);
       dispatch(fetchDocuments());
+      // Notifier l'admin pour chaque document uploadé
+      if (profil) {
+        const existing = JSON.parse(localStorage.getItem("hrskills_admin_notifs") || "[]");
+        const newNotifs = files.map(({ type }) => {
+          const docLabel = DOC_TYPES.find((d) => d.value === type)?.label || type;
+          return {
+            id: `upload-${Date.now()}-${type}`,
+            type: "upload_document",
+            texte: `Nouveau document de ${profil.prenom} ${profil.nom}`,
+            contenu: `${profil.prenom} ${profil.nom} (${profil.etablissement || "—"}) a soumis le document : ${docLabel}.`,
+            userName: `${profil.prenom} ${profil.nom}`,
+            docLabel,
+            date: new Date().toISOString(),
+          };
+        });
+        localStorage.setItem("hrskills_admin_notifs", JSON.stringify([...newNotifs, ...existing]));
+      }
       setShowUpload(false); setUploadFiles({});
     } catch (err) {
       setUploadError(err.response?.data?.detail || err.message || "Erreur lors de l'upload");
@@ -659,51 +735,146 @@ export default function DashboardPage() {
                   style={{
                     position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 50,
                     background: "#fff", borderRadius: "16px", border: "1px solid #ede9fe",
-                    boxShadow: "0 16px 48px rgba(15,23,42,0.12)", width: "340px",
+                    boxShadow: "0 16px 48px rgba(15,23,42,0.12)", width: "360px",
                     animation: "fadeIn 0.15s ease",
                   }}
                 >
+                  {/* Header */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem", borderBottom: "1px solid #f3f4f6" }}>
-                    <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "700", fontSize: "14px", color: "#0f172a" }}>
+                    <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: "700", fontSize: "14px", color: "#0f172a", display: "flex", alignItems: "center", gap: "6px" }}>
                       Notifications
                       {notifsNonLues > 0 && (
-                        <span style={{ marginLeft: "6px", background: "#ef4444", color: "#fff", borderRadius: "99px", fontSize: "10px", fontWeight: "700", padding: "1px 6px" }}>
+                        <span style={{ background: "#ef4444", color: "#fff", borderRadius: "99px", fontSize: "10px", fontWeight: "700", padding: "1px 6px" }}>
                           {notifsNonLues}
                         </span>
                       )}
                     </span>
-                    {notifsNonLues > 0 && (
-                      <button onClick={marquerToutesLues} style={{ fontSize: "12px", color: "#7c3aed", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}>
-                        Tout lire
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {notifsNonLues > 0 && (
+                        <button onClick={marquerToutesLues} style={{ fontSize: "11px", color: "#7c3aed", background: "#f5f3ff", border: "1px solid #ede9fe", borderRadius: "7px", padding: "3px 8px", cursor: "pointer", fontWeight: "600" }}>
+                          Tout lire
+                        </button>
+                      )}
+                      <button onClick={() => setShowNotifs(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: "4px", display: "flex", borderRadius: "6px" }}>
+                        <FiX size={14} />
                       </button>
-                    )}
+                    </div>
                   </div>
-                  <div style={{ maxHeight: "340px", overflowY: "auto" }}>
-                    {notifications.length === 0 ? (
+
+                  {/* Barre d'actions */}
+                  {visibleNotifications.length > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 1.25rem", background: "#fafafa", borderBottom: "1px solid #f3f4f6" }}>
+                      {notifSelectMode ? (
+                        <>
+                          <button
+                            onClick={() => setSelectedNotifIds(selectedNotifIds.length === visibleNotifications.length ? [] : visibleNotifications.map((n) => n.id))}
+                            style={{ fontSize: "11px", color: "#7c3aed", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}
+                          >
+                            {selectedNotifIds.length === visibleNotifications.length ? "Tout déselectionner" : "Tout sélectionner"}
+                          </button>
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            {selectedNotifIds.length > 0 && (
+                              <button
+                                onClick={() => deleteNotifications(selectedNotifIds)}
+                                style={{ fontSize: "11px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "7px", padding: "3px 8px", cursor: "pointer", fontWeight: "600" }}
+                              >
+                                Supprimer ({selectedNotifIds.length})
+                              </button>
+                            )}
+                            <button
+                              onClick={() => { setNotifSelectMode(false); setSelectedNotifIds([]); }}
+                              style={{ fontSize: "11px", color: "#64748b", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setNotifSelectMode(true)}
+                            style={{ fontSize: "11px", color: "#64748b", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}
+                          >
+                            Sélectionner
+                          </button>
+                          <button
+                            onClick={() => deleteNotifications(visibleNotifications.map((n) => n.id))}
+                            style={{ fontSize: "11px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}
+                          >
+                            Vider tout
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Liste */}
+                  <div style={{ maxHeight: "320px", overflowY: "auto" }}>
+                    {visibleNotifications.length === 0 ? (
                       <div style={{ padding: "2.5rem", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
                         Aucune notification
                       </div>
-                    ) : notifications.map((n) => {
+                    ) : visibleNotifications.map((n) => {
                       const nonLue = !lus.includes(n.id);
-                      const dotColor = n.type === "message" ? "#7c3aed" : n.type === "paiement" ? "#0ea5e9" : n.type === "preinscription" ? "#10b981" : "#f59e0b";
+                      const dotColor = n.type === "message" ? "#7c3aed" : n.type === "paiement" ? "#0ea5e9" : n.type === "preinscription" ? "#10b981" : n.motif ? "#dc2626" : "#f59e0b";
+                      const isSelected = selectedNotifIds.includes(n.id);
                       return (
                         <div
                           key={n.id}
+                          onClick={() => {
+                            if (notifSelectMode) {
+                              setSelectedNotifIds(isSelected ? selectedNotifIds.filter((id) => id !== n.id) : [...selectedNotifIds, n.id]);
+                            } else {
+                              setNotifDetail(n);
+                              setShowNotifs(false);
+                              if (nonLue) {
+                                const newLus = [...lus, n.id];
+                                setLus(newLus);
+                                if (profil?.id) localStorage.setItem(`hrskills_lu_${profil.id}`, JSON.stringify(newLus));
+                              }
+                            }
+                          }}
                           style={{
                             padding: "0.85rem 1.25rem", borderBottom: "1px solid #f9fafb",
-                            background: nonLue ? "#faf5ff" : "#fff",
+                            background: isSelected ? "#ede9fe" : nonLue ? "#faf5ff" : "#fff",
                             display: "flex", gap: "10px", alignItems: "flex-start",
+                            cursor: "pointer", transition: "background 0.12s",
                           }}
+                          onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "#f5f3ff"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "#ede9fe" : nonLue ? "#faf5ff" : "#fff"; }}
                         >
-                          <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: nonLue ? dotColor : "#e5e7eb", marginTop: "6px", flexShrink: 0 }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: "13px", color: "#1e293b", lineHeight: "1.5", fontWeight: nonLue ? "500" : "400" }}>{n.texte}</div>
+                          {notifSelectMode ? (
+                            <div style={{ width: "16px", height: "16px", borderRadius: "4px", border: `2px solid ${isSelected ? "#7c3aed" : "#d1d5db"}`, background: isSelected ? "#7c3aed" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "3px" }}>
+                              {isSelected && <FiCheck size={10} style={{ color: "#fff" }} />}
+                            </div>
+                          ) : (
+                            <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: nonLue ? dotColor : "#e5e7eb", marginTop: "6px", flexShrink: 0 }} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: "13px", color: "#1e293b", lineHeight: "1.5", fontWeight: nonLue ? "600" : "400", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.texte}</div>
+                            {n.motif && (
+                              <div style={{ fontSize: "11px", color: "#dc2626", marginTop: "2px", fontWeight: "500", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                Motif : {n.motif}
+                              </div>
+                            )}
                             {n.date && <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{new Date(n.date).toLocaleDateString("fr-FR")}</div>}
                           </div>
+                          {!notifSelectMode && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteNotifications([n.id]); }}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "#d1d5db", padding: "3px", display: "flex", borderRadius: "5px", flexShrink: 0, transition: "all 0.15s" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.background = "#fef2f2"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = "#d1d5db"; e.currentTarget.style.background = "none"; }}
+                            >
+                              <FiTrash2 size={13} />
+                            </button>
+                          )}
                         </div>
                       );
                     })}
                   </div>
+
+                  {/* Footer */}
                   <div style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid #f3f4f6" }}>
                     <button onClick={() => { setActiveMenu("messages"); setShowNotifs(false); }} style={{ fontSize: "13px", color: "#7c3aed", background: "none", border: "none", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
                       Voir mes messages <FiChevronRight size={13} />
@@ -1208,47 +1379,85 @@ export default function DashboardPage() {
       {/* ══ MODALS ══ */}
 
       {/* MODAL UPLOAD */}
-      {showUpload && (
-        <MobileModal title="Téléverser vos documents" subtitle="Formats acceptés : PDF, JPG, JPEG, PNG" onClose={() => { setShowUpload(false); setUploadFiles({}); setUploadError(""); }}>
-          <form onSubmit={handleUpload} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {DOC_TYPES.map((doc) => (
-              <div key={doc.value} style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "1rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "13px", fontWeight: "600", color: "#1e293b" }}>{doc.label}</span>
-                  <span style={{ fontSize: "10px", color: "#7c3aed", fontWeight: "700", background: "#f5f3ff", padding: "2px 7px", borderRadius: "99px", border: "1px solid #c4b5fd" }}>Requis</span>
-                </div>
-                <input
-                  type="file" accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => setUploadFiles({ ...uploadFiles, [doc.value]: e.target.files[0] })}
-                  style={{ width: "100%", fontSize: "13px", color: "#64748b", cursor: "pointer" }}
-                />
-                {uploadFiles[doc.value] && (
-                  <div style={{ marginTop: "6px", fontSize: "12px", color: "#7c3aed", fontWeight: "500" }}>
-                    ✓ {uploadFiles[doc.value].name}
+      {showUpload && (() => {
+        const uploadableDocs = DOC_TYPES.filter((doc) => {
+          const docObj = documents.find((d) => d.type === doc.value);
+          return !docObj || docObj.statut !== "valide";
+        });
+        const hasRejected = uploadableDocs.some((doc) => {
+          const docObj = documents.find((d) => d.type === doc.value);
+          return docObj?.statut === "rejete";
+        });
+        return (
+          <MobileModal
+            title="Téléverser vos documents"
+            subtitle={hasRejected ? "Corrigez et soumettez à nouveau les documents rejetés" : "Formats acceptés : PDF, JPG, JPEG, PNG"}
+            onClose={() => { setShowUpload(false); setUploadFiles({}); setUploadError(""); }}
+          >
+            {uploadableDocs.length === 0 ? (
+              <div style={{ padding: "2rem", textAlign: "center" }}>
+                <FiCheckCircle size={36} style={{ color: "#10b981", marginBottom: "1rem", display: "block", margin: "0 auto 1rem" }} />
+                <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "15px", fontWeight: "700", color: "#0f172a", marginBottom: "6px" }}>Tous vos documents sont validés</div>
+                <div style={{ fontSize: "13px", color: "#94a3b8" }}>Aucun document ne nécessite d'être soumis à nouveau.</div>
+              </div>
+            ) : (
+              <form onSubmit={handleUpload} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {uploadableDocs.map((doc) => {
+                  const docObj = documents.find((d) => d.type === doc.value);
+                  const isRejected = docObj?.statut === "rejete";
+                  const isPending = docObj?.statut === "en_attente";
+                  return (
+                    <div key={doc.value} style={{ background: isRejected ? "#fef2f2" : "#f8fafc", border: `1px solid ${isRejected ? "#fecaca" : "#e5e7eb"}`, borderRadius: "12px", padding: "1rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "13px", fontWeight: "600", color: "#1e293b" }}>{doc.label}</span>
+                        {isRejected ? (
+                          <span style={{ fontSize: "10px", color: "#dc2626", fontWeight: "700", background: "#fee2e2", padding: "2px 7px", borderRadius: "99px", border: "1px solid #fecaca" }}>Rejeté — à corriger</span>
+                        ) : isPending ? (
+                          <span style={{ fontSize: "10px", color: "#d97706", fontWeight: "700", background: "#fffbeb", padding: "2px 7px", borderRadius: "99px", border: "1px solid #fde68a" }}>En attente</span>
+                        ) : (
+                          <span style={{ fontSize: "10px", color: "#7c3aed", fontWeight: "700", background: "#f5f3ff", padding: "2px 7px", borderRadius: "99px", border: "1px solid #c4b5fd" }}>Requis</span>
+                        )}
+                      </div>
+                      {isRejected && docObj?.commentaire && (
+                        <div style={{ fontSize: "11px", color: "#dc2626", background: "#fef2f2", borderRadius: "7px", padding: "6px 9px", marginBottom: "8px", fontWeight: "500", lineHeight: "1.5" }}>
+                          Motif : {docObj.commentaire}
+                        </div>
+                      )}
+                      <input
+                        type="file" accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => setUploadFiles({ ...uploadFiles, [doc.value]: e.target.files[0] })}
+                        style={{ width: "100%", fontSize: "13px", color: "#64748b", cursor: "pointer" }}
+                      />
+                      {uploadFiles[doc.value] && (
+                        <div style={{ marginTop: "6px", fontSize: "12px", color: "#7c3aed", fontWeight: "500" }}>
+                          ✓ {uploadFiles[doc.value].name}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {uploadError && (
+                  <div style={{ padding: "10px 14px", borderRadius: "10px", background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: "13px", display: "flex", gap: "8px" }}>
+                    <FiAlertCircle size={14} style={{ flexShrink: 0, marginTop: "1px" }} /> {uploadError}
                   </div>
                 )}
-              </div>
-            ))}
-            {uploadError && (
-              <div style={{ padding: "10px 14px", borderRadius: "10px", background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: "13px", display: "flex", gap: "8px" }}>
-                <FiAlertCircle size={14} style={{ flexShrink: 0, marginTop: "1px" }} /> {uploadError}
-              </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "0.25rem" }}>
+                  <button type="submit" disabled={uploading} style={{ padding: "13px", borderRadius: "11px", background: "linear-gradient(135deg, #7c3aed, #a78bfa)", color: "#fff", border: "none", fontSize: "14px", fontWeight: "700", cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                    {uploading ? (
+                      <><span style={{ width: "14px", height: "14px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", animation: "spin 0.7s linear infinite", display: "inline-block" }} /> Envoi en cours…</>
+                    ) : (
+                      <><FiUpload size={14} /> Téléverser les documents</>
+                    )}
+                  </button>
+                  <button type="button" onClick={() => { setShowUpload(false); setUploadFiles({}); setUploadError(""); }} style={{ padding: "12px", borderRadius: "11px", background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb", fontSize: "14px", fontWeight: "600", cursor: "pointer" }}>
+                    Annuler
+                  </button>
+                </div>
+              </form>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "0.25rem" }}>
-              <button type="submit" disabled={uploading} style={{ padding: "13px", borderRadius: "11px", background: "linear-gradient(135deg, #7c3aed, #a78bfa)", color: "#fff", border: "none", fontSize: "14px", fontWeight: "700", cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                {uploading ? (
-                  <><span style={{ width: "14px", height: "14px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", animation: "spin 0.7s linear infinite", display: "inline-block" }} /> Envoi en cours…</>
-                ) : (
-                  <><FiUpload size={14} /> Téléverser les documents</>
-                )}
-              </button>
-              <button type="button" onClick={() => { setShowUpload(false); setUploadFiles({}); setUploadError(""); }} style={{ padding: "12px", borderRadius: "11px", background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb", fontSize: "14px", fontWeight: "600", cursor: "pointer" }}>
-                Annuler
-              </button>
-            </div>
-          </form>
-        </MobileModal>
-      )}
+          </MobileModal>
+        );
+      })()}
 
       {/* MODAL PRÉ-INSCRIPTION */}
       {showPreinscription && (
@@ -1336,6 +1545,95 @@ export default function DashboardPage() {
           </div>
         </MobileModal>
       )}
+      {/* ── MODAL DÉTAIL NOTIFICATION ── */}
+      {notifDetail && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.52)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 300, backdropFilter: "blur(4px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setNotifDetail(null); }}
+        >
+          <div style={{ background: "#fff", borderRadius: "20px", width: "100%", maxWidth: "440px", boxShadow: "0 24px 64px rgba(15,23,42,0.18)", overflow: "hidden", animation: "fadeIn 0.18s ease" }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", borderBottom: "1px solid #f3f4f6", background: "linear-gradient(135deg, #faf5ff, #ede9fe)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{
+                  width: "40px", height: "40px", borderRadius: "11px", flexShrink: 0,
+                  background: notifDetail.type === "message" ? "#f5f3ff" : notifDetail.type === "paiement" ? "#f0f9ff" : notifDetail.motif ? "#fef2f2" : "#f0fdf4",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: notifDetail.type === "message" ? "#7c3aed" : notifDetail.type === "paiement" ? "#0ea5e9" : notifDetail.motif ? "#dc2626" : "#10b981",
+                  border: `1px solid ${notifDetail.type === "message" ? "#c4b5fd" : notifDetail.type === "paiement" ? "#bae6fd" : notifDetail.motif ? "#fecaca" : "#bbf7d0"}`,
+                }}>
+                  {notifDetail.type === "message" ? <FiMessageSquare size={16} /> : notifDetail.type === "paiement" ? <FiCreditCard size={16} /> : notifDetail.type === "document" ? <FiFileText size={16} /> : <FiUserCheck size={16} />}
+                </div>
+                <div>
+                  <div style={{ fontFamily: "'Poppins', sans-serif", fontSize: "14px", fontWeight: "700", color: "#0f172a", lineHeight: "1.3" }}>{notifDetail.texte}</div>
+                  {notifDetail.date && <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{new Date(notifDetail.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>}
+                </div>
+              </div>
+              <button onClick={() => setNotifDetail(null)} style={{ background: "rgba(255,255,255,0.8)", border: "none", cursor: "pointer", color: "#64748b", borderRadius: "8px", padding: "6px", display: "flex", flexShrink: 0 }}>
+                <FiX size={16} />
+              </button>
+            </div>
+
+            {/* Contenu */}
+            <div style={{ padding: "1.25rem 1.5rem" }}>
+              {notifDetail.motif && (
+                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "11px", padding: "12px 14px", marginBottom: "14px" }}>
+                  <div style={{ fontSize: "10px", fontWeight: "700", color: "#dc2626", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "5px" }}>Motif du rejet</div>
+                  <div style={{ fontSize: "13px", color: "#7f1d1d", lineHeight: "1.65", fontWeight: "500" }}>{notifDetail.motif}</div>
+                </div>
+              )}
+              {notifDetail.contenu && (
+                <div style={{ fontSize: "14px", color: "#374151", lineHeight: "1.75", whiteSpace: "pre-wrap" }}>
+                  {notifDetail.contenu}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #f3f4f6", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+              <button
+                onClick={() => { deleteNotifications([notifDetail.id]); setNotifDetail(null); }}
+                style={{ fontSize: "13px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "9px", padding: "7px 14px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "5px" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "#fee2e2"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "#fef2f2"}
+              >
+                <FiTrash2 size={13} /> Supprimer
+              </button>
+              <div style={{ display: "flex", gap: "8px" }}>
+                {notifDetail.type === "document" && notifDetail.motif && (
+                  <button
+                    onClick={() => { setActiveMenu("documents"); setNotifDetail(null); }}
+                    style={{ fontSize: "13px", color: "#7c3aed", background: "#f5f3ff", border: "1px solid #c4b5fd", borderRadius: "9px", padding: "7px 14px", cursor: "pointer", fontWeight: "600" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#ede9fe"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#f5f3ff"}
+                  >
+                    Mes documents
+                  </button>
+                )}
+                {notifDetail.type === "message" && (
+                  <button
+                    onClick={() => { setActiveMenu("messages"); setNotifDetail(null); }}
+                    style={{ fontSize: "13px", color: "#7c3aed", background: "#f5f3ff", border: "1px solid #c4b5fd", borderRadius: "9px", padding: "7px 14px", cursor: "pointer", fontWeight: "600" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#ede9fe"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#f5f3ff"}
+                  >
+                    Voir le message
+                  </button>
+                )}
+                <button
+                  onClick={() => setNotifDetail(null)}
+                  style={{ fontSize: "13px", color: "#64748b", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: "9px", padding: "7px 14px", cursor: "pointer", fontWeight: "600" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#f8fafc"}
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showOnboarding && (
         <OnboardingTour
           steps={onboardingSteps}

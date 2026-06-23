@@ -3,7 +3,7 @@ import messagesService from "./messagesService";
 
 export const fetchMesMessages = createAsyncThunk(
   "messages/fetchMes",
-  async (userId) => messagesService.getMesMessages(userId)
+  async () => messagesService.getMesMessages()
 );
 
 export const fetchMessagesEnvoyes = createAsyncThunk(
