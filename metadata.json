@@ -1,0 +1,6 @@
+{
+  "name": "HR Skills - Gestion des stages",
+  "description": "Plateforme bilingue de gestion et d'inscription en direct pour les stages académiques en Informatique chez HR Skills SARL à Yaoundé, Cameroun.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
